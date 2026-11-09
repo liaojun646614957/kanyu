@@ -6,6 +6,8 @@ import { castLine, guaOf, GUA_READING, GUA_READING_FALLBACK, TRIGRAM, type Line 
 import { PERSONA, PERSONA_FALLBACK } from "@/lib/persona";
 import { downloadPoster } from "@/lib/poster";
 import type { Beat, StoryScript } from "@/lib/story";
+import ReportReader from "@/components/ReportReader";
+import { buildReport } from "@/lib/report";
 
 /**
  * 剧本播放器（视频版）。
@@ -347,13 +349,16 @@ function AutoAdvance({ hold, onDone }: { hold: number; onDone: () => void }) {
 
   return (
     <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onDone}
+        className="press shrink-0 text-[10px] tracking-widest text-white/40"
+      >
+        跳过
+      </button>
       <div className="h-[2px] flex-1 overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full bg-cinnabar-400/70"
-          style={{ width: `${p * 100}%` }}
-        />
+        <div className="h-full rounded-full bg-cinnabar-400/70" style={{ width: `${p * 100}%` }} />
       </div>
-      <span className="text-[9px] tracking-widest text-white/25">点击跳过</span>
     </div>
   );
 }
@@ -403,11 +408,12 @@ function InputBlock({
       {beat.input!.skip && (
         <button
           type="button"
-          onClick={() => {
+          onPointerDown={(e) => {
+            e.stopPropagation();
             setHour("");
             onNext();
           }}
-          className="press py-1.5 text-[12px] text-white/40"
+          className="press py-2 text-[12px] text-white/45"
         >
           {beat.input!.skip}
         </button>
@@ -521,7 +527,7 @@ function CastBlock({
  * ------------------------------------------------------------------ */
 
 function Ending({ story, data }: { story: StoryScript; data: Collected }) {
-  const [sheet, setSheet] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
 
   const parsed = useMemo(() => {
@@ -623,7 +629,7 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
         <div className="mt-auto flex flex-col gap-3 pt-6">
           <button
             type="button"
-            onClick={() => setSheet(true)}
+            onClick={() => setReportOpen(true)}
             className="press w-full rounded-full bg-cinnabar-500 py-3.5 text-[14px] font-medium tracking-wide text-white shadow-[0_14px_44px_-10px_rgba(207,74,52,0.95)]"
           >
             看我的盘
@@ -632,94 +638,22 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
         </div>
       </div>
 
-      {sheet && result && (
-        <div className="absolute inset-0 z-30 flex flex-col justify-end">
-          <button
-            type="button"
-            aria-label="关闭"
-            onClick={() => setSheet(false)}
-            className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
+      {reportOpen && result && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-white">
+          <ReportReader
+            report={buildReport(
+              result.fp,
+              result.counts,
+              {
+                tag: result.persona.tag,
+                core: result.persona.core,
+                gift: result.persona.gift,
+                trap: result.persona.trap,
+                doThis: result.persona.doThis,
+              },
+            )}
+            onClose={() => setReportOpen(false)}
           />
-          <div className="animate-rise relative max-h-[88vh] overflow-y-auto rounded-t-3xl border-t border-white/10 bg-ink-900/96 px-5 pb-8 pt-3 backdrop-blur-xl">
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/20" />
-
-            <div className="flex items-end justify-between">
-              <div className="flex flex-col gap-1">
-                <span className="text-[9.5px] tracking-[0.24em] text-white/35">你的盘</span>
-                <span className="font-serif text-[21px] text-white">{result.fp.day.text}</span>
-              </div>
-              <span className="text-[10.5px] text-white/35">能量 {result.strength.ratio}%</span>
-            </div>
-
-            <div className="mt-4 grid grid-cols-4 gap-2">
-              {[
-                ["年", result.fp.year.text],
-                ["月", result.fp.month.text],
-                ["日", result.fp.day.text],
-                ["时", result.fp.hour?.text ?? "—"],
-              ].map(([l, t]) => (
-                <div
-                  key={l}
-                  className="flex flex-col items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] py-2.5"
-                >
-                  <span className="text-[8.5px] tracking-widest text-white/30">{l}</span>
-                  <span className="font-serif text-[15px] text-white/90">{t}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 flex gap-1.5">
-              {wxData.map((d) => (
-                <div key={d.el} className="flex flex-1 flex-col items-center gap-1">
-                  <div className="flex h-[64px] w-full items-end justify-center">
-                    <div
-                      className="w-full rounded-t bg-cinnabar-600/75"
-                      style={{
-                        height: `${Math.max(8, (d.v / Math.max(...wxData.map((x) => x.v), 1)) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="font-serif text-[10px] text-white/45">{d.el}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3.5">
-              <span className="text-[9px] tracking-[0.2em] text-white/30">今天就试一下</span>
-              <p className="mt-1.5 text-[12px] leading-6 text-white/85">{result.persona.doThis}</p>
-            </div>
-
-            <div className="mt-4 flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setSheet(false)}
-                className="press flex-1 rounded-full border border-white/15 py-3 text-[12px] text-white/70"
-              >
-                关闭
-              </button>
-              <button
-                type="button"
-                disabled={sharing}
-                onClick={async () => {
-                  if (!result) return;
-                  setSharing(true);
-                  try {
-                    await downloadPoster({
-                      dayGanZhi: result.fp.day.text,
-                      tag: result.persona.tag,
-                      core: result.persona.core,
-                      gift: result.persona.gift,
-                    });
-                  } finally {
-                    setSharing(false);
-                  }
-                }}
-                className="press flex-1 rounded-full bg-cinnabar-500 py-3 text-[12px] font-medium text-white disabled:opacity-60"
-              >
-                {sharing ? "生成中…" : "存成图片"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
