@@ -7,7 +7,7 @@ import { PERSONA, PERSONA_FALLBACK } from "@/lib/persona";
 import { downloadPoster } from "@/lib/poster";
 import type { Beat, StoryScript } from "@/lib/story";
 import StoryBook from "@/components/StoryBook";
-import Transition from "@/components/Transition";
+import StoryHero from "@/components/StoryHero";
 import { buildReport } from "@/lib/report";
 
 /**
@@ -62,14 +62,17 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   }, [i, flat.length]);
 
   if (phase === "transition") {
+    // 摇卦之后：视频首屏 + 气泡，滚动向下就是结局和图文报告。
+    // 不跳转、不点按钮——这是 sajutight 的做法。
     return (
-      <Transition
-        name={name}
-        video="/video/07-reveal.mp4"
-        poster="/img/c4-gaze.jpg"
-        duration={9000}
-        onDone={() => setPhase("ending")}
-      />
+      <div className="mx-auto w-full max-w-[440px] bg-[#0b0809]">
+        <StoryHero
+          name={name}
+          video="/video/07-reveal.mp4"
+          poster="/img/c4-gaze.jpg"
+        />
+        <Ending story={story} data={{ name, birth, hour, tags, lines, costs }} inline />
+      </div>
     );
   }
 
@@ -559,7 +562,15 @@ function CastBlock({
  * 结局
  * ------------------------------------------------------------------ */
 
-function Ending({ story, data }: { story: StoryScript; data: Collected }) {
+function Ending({
+  story,
+  data,
+  inline,
+}: {
+  story: StoryScript;
+  data: Collected;
+  inline?: boolean;
+}) {
   const [reportOpen, setReportOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
 
@@ -604,95 +615,95 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
   const wxData = result ? WUXING.map((el) => ({ el, v: result.counts[el] })) : [];
 
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black">
-      <video
-        src="/video/07-reveal.mp4"
-        muted
-        playsInline
-        autoPlay
-        loop
-        className="absolute inset-0 h-full w-full object-cover opacity-70"
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.3) 26%, rgba(0,0,0,0.9) 62%, #000 100%)",
-        }}
-      />
+    <div className="relative mx-auto w-full max-w-[440px] bg-black">
+      {/* 首屏：视频 + 结局文案，占满一屏 */}
+      <section className={`relative flex w-full flex-col overflow-hidden ${inline ? "min-h-[70dvh]" : "h-[100dvh]"}`}>
+        <video
+          src="/video/07-reveal.mp4"
+          muted
+          playsInline
+          autoPlay
+          loop
+          className="absolute inset-0 h-full w-full object-cover opacity-70"
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.28) 26%, rgba(0,0,0,0.88) 62%, #0b0809 100%)",
+          }}
+        />
 
-      <div className="relative z-10 flex flex-1 flex-col px-5 pb-8 pt-12">
-        <span className="font-serif text-[9.5px] tracking-[0.3em] text-cinnabar-300">
-          结局
-        </span>
+        <div className="relative z-10 flex flex-1 flex-col px-5 pb-7 pt-12">
+          <span className="font-serif text-[9.5px] tracking-[0.3em] text-cinnabar-300">
+            结局
+          </span>
 
-        <h1 className="animate-rise mt-3 font-serif text-[28px] leading-[1.3] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.95)]">
-          {ending?.title}
-        </h1>
+          <h1 className="animate-rise mt-3 font-serif text-[28px] leading-[1.3] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.95)]">
+            {ending?.title}
+          </h1>
 
-        <p className="animate-fade mt-4 text-[13px] leading-7 text-white/72">
-          {data.name.trim() ? `${data.name.trim()}，` : ""}
-          {ending?.body}
-        </p>
+          <p className="animate-fade mt-4 text-[13px] leading-7 text-white/72">
+            {data.name.trim() ? `${data.name.trim()}，` : ""}
+            {ending?.body}
+          </p>
 
-        {data.costs.length > 0 && (
-          <div className="mt-5 flex flex-col gap-1.5 rounded-xl border border-white/10 bg-black/40 p-3.5 backdrop-blur-md">
-            <span className="text-[9px] tracking-[0.2em] text-white/30">你放弃的</span>
-            {data.costs.map((c, i) => (
-              <p key={i} className="text-[11px] leading-5 text-white/45">
-                · {c}
-              </p>
-            ))}
-          </div>
-        )}
-
-        {reading && (
-          <div className="mt-5 rounded-2xl border border-white/12 bg-black/45 p-4 backdrop-blur-md">
-            <div className="flex items-baseline gap-2">
-              <span className="font-serif text-[16px] text-white/85">
-                {TRIGRAM[gua!.upper].symbol}
-                {TRIGRAM[gua!.lower].symbol}
-              </span>
-              <span className="font-serif text-[12px] text-white/65">
-                第{gua!.order}卦 · {gua!.name}
-              </span>
+          {data.costs.length > 0 && (
+            <div className="mt-4 flex flex-col gap-1.5 rounded-xl border border-white/10 bg-black/40 p-3.5 backdrop-blur-md">
+              <span className="text-[9px] tracking-[0.2em] text-white/30">你放弃的</span>
+              {data.costs.map((c, i) => (
+                <p key={i} className="text-[11px] leading-5 text-white/45">
+                  · {c}
+                </p>
+              ))}
             </div>
-            <p className="mt-2 font-serif text-[14px] leading-7 text-white/88">{reading.verdict}</p>
-            <p className="mt-1.5 text-[11.5px] leading-6 text-white/50">{reading.warn}</p>
-          </div>
-        )}
+          )}
 
-        <div className="mt-auto flex flex-col gap-3 pt-6">
-          <button
-            type="button"
-            onClick={() => setReportOpen(true)}
-            className="press w-full rounded-full bg-cinnabar-500 py-3.5 text-[14px] font-medium tracking-wide text-white shadow-[0_14px_44px_-10px_rgba(207,74,52,0.95)]"
-          >
-            看我的盘
-          </button>
-          <p className="text-center text-[9.5px] text-white/25">仅供娱乐参考</p>
-        </div>
-      </div>
+          {reading && (
+            <div className="mt-4 rounded-2xl border border-white/12 bg-black/45 p-4 backdrop-blur-md">
+              <div className="flex items-baseline gap-2">
+                <span className="font-serif text-[16px] text-white/85">
+                  {TRIGRAM[gua!.upper].symbol}
+                  {TRIGRAM[gua!.lower].symbol}
+                </span>
+                <span className="font-serif text-[12px] text-white/65">
+                  第{gua!.order}卦 · {gua!.name}
+                </span>
+              </div>
+              <p className="mt-2 font-serif text-[14px] leading-7 text-white/88">
+                {reading.verdict}
+              </p>
+            </div>
+          )}
 
-      {reportOpen && result && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-white">
-          <StoryBook
-            report={buildReport(
-              result.fp,
-              result.counts,
-              {
-                tag: result.persona.tag,
-                core: result.persona.core,
-                gift: result.persona.gift,
-                trap: result.persona.trap,
-                doThis: result.persona.doThis,
-              },
-              data.name.trim() || undefined,
-              data.tags.includes("male") ? "male" : "female",
-            )}
-            onClose={() => setReportOpen(false)}
-          />
+          {!inline && (
+            <div className="mt-auto flex flex-col items-center gap-1.5 pt-6">
+              <span className="animate-bounce text-[10.5px] tracking-[0.24em] text-white/45">
+                往下看你的盘
+              </span>
+              <span className="animate-bounce text-[15px] text-white/35">↓</span>
+            </div>
+          )}
         </div>
+      </section>
+
+      {/* 紧接着就是图文报告——不需要点击，滚动就是下一页 */}
+      {result && (
+        <StoryBook
+          report={buildReport(
+            result.fp,
+            result.counts,
+            {
+              tag: result.persona.tag,
+              core: result.persona.core,
+              gift: result.persona.gift,
+              trap: result.persona.trap,
+              doThis: result.persona.doThis,
+            },
+            data.name.trim() || undefined,
+            data.tags.includes("male") ? "male" : "female",
+          )}
+        />
       )}
     </div>
   );

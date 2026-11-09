@@ -86,7 +86,7 @@ function chapterPages(ch: Chapter): { page: PageText; hero?: boolean }[] {
   return pages;
 }
 
-export default function StoryBook({ report, onClose }: { report: Report; onClose: () => void }) {
+export default function StoryBook({ report }: { report: Report }) {
   const [pages, setPages] = useState<{ ch: number; dataUrl: string; h: number }[]>([]);
   const [progress, setProgress] = useState(0);
   const [unlocked, setUnlocked] = useState<Record<number, boolean>>({});
@@ -121,26 +121,10 @@ export default function StoryBook({ report, onClose }: { report: Report; onClose
   const paying = report.chapters.some((c) => c.paid);
 
   return (
-    <div className="relative mx-auto min-h-dvh w-full max-w-[440px] bg-[#0b0809]">
-      {/* 顶栏 */}
-      <div className="sticky top-0 z-40 flex items-center justify-between bg-[#0b0809]/90 px-4 py-3 backdrop-blur-xl">
-        <button
-          type="button"
-          onClick={onClose}
-          className="press flex h-8 w-8 items-center justify-center rounded-full bg-white/8 text-[13px] text-white/60"
-          aria-label="关闭"
-        >
-          ✕
-        </button>
-        <span className="font-serif text-[11px] tracking-[0.22em] text-white/40">
-          {report.product}
-        </span>
-        <span className="w-8" />
-      </div>
-
-      {/* 渲染进度 */}
+    <div className="relative w-full bg-[#0b0809]">
+      {/* 渲染进度（细线，不打断阅读） */}
       {progress < 1 && (
-        <div className="sticky top-[56px] z-30 px-4">
+        <div className="sticky top-0 z-30 px-4 pt-1">
           <div className="h-[2px] overflow-hidden rounded-full bg-white/10">
             <div
               className="h-full rounded-full bg-cinnabar-500 transition-[width] duration-300"
@@ -150,12 +134,40 @@ export default function StoryBook({ report, onClose }: { report: Report; onClose
         </div>
       )}
 
-      {/* 页 */}
+      {/* 页：付费章在开头插一条提示，不拦截后面的内容 */}
       <div className="flex flex-col">
         {pages.map((p, i) => {
-          const isPaidCh = report.chapters.find((c) => c.no === p.ch)?.paid;
-          const locked = isPaidCh && !unlocked[p.ch];
+          const chMeta = report.chapters.find((c) => c.no === p.ch);
+          const locked = chMeta?.paid && !unlocked[p.ch];
+
+          // 这一章的第一页 → 若未解锁，先插提示条，再决定是否渲染
+          const prev = pages[i - 1];
+          const isChapterStart = !prev || prev.ch !== p.ch;
+          if (locked && isChapterStart) {
+            return (
+              <div key={`pay-${p.ch}`} className="border-y border-white/10 bg-[#160a0b] px-5 py-6">
+                <p className="font-serif text-[11px] tracking-[0.2em] text-cinnabar-400">
+                  第 {chMeta!.no} 章
+                </p>
+                <p className="mt-2 text-[15px] font-semibold text-white/90">{chMeta!.title}</p>
+                <p className="mt-1.5 text-[11px] leading-5 text-white/38">
+                  {chMeta!.sections.map((s) => s.title).join(" · ")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setUnlocked((u) => ({ ...u, [p.ch]: true }))}
+                  className="press mt-4 w-full rounded-full bg-[#c0392b] py-3 text-[12.5px] font-medium text-white"
+                >
+                  继续读
+                </button>
+                <p className="mt-2 text-center text-[9px] text-white/20">
+                  演示版本：点击即继续
+                </p>
+              </div>
+            );
+          }
           if (locked) return null;
+
           return (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -168,36 +180,6 @@ export default function StoryBook({ report, onClose }: { report: Report; onClose
           );
         })}
       </div>
-
-      {/* 付费墙 */}
-      {paying &&
-        report.chapters
-          .filter((c) => c.paid)
-          .map((c) =>
-            unlocked[c.no] ? null : (
-              <div
-                key={c.id}
-                className="sticky bottom-0 z-40 border-t border-white/10 bg-[#160a0b]/96 px-5 pb-6 pt-5 backdrop-blur-xl"
-              >
-                <p className="text-[13px] font-semibold text-white/90">
-                  第 {c.no} 章「{c.title}」要付费才能看
-                </p>
-                <p className="mt-1.5 text-[11px] leading-5 text-white/40">
-                  包含：{c.sections.map((s) => s.title).join("、")}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setUnlocked((u) => ({ ...u, [c.no]: true }))}
-                  className="press mt-4 w-full rounded-full bg-[#c0392b] py-3.5 text-[13.5px] font-medium text-white"
-                >
-                  解锁第 {c.no} 章
-                </button>
-                <p className="mt-2 text-center text-[9px] text-white/20">
-                  演示版本：点击即解锁
-                </p>
-              </div>
-            ),
-          )}
     </div>
   );
 }
