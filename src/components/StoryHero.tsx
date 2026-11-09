@@ -20,6 +20,8 @@ type Props = {
   poster: string;
   /** 视频播完后是否吸附在顶部（让下面的图文自然接上） */
   onSettled?: () => void;
+  /** loading 模式：不提示向下滚，而是等它自动过去 */
+  loadingOnly?: boolean;
 };
 
 const BUBBLES: { at: [number, number]; side: "left" | "right"; top: string }[] = [
@@ -28,7 +30,7 @@ const BUBBLES: { at: [number, number]; side: "left" | "right"; top: string }[] =
   { at: [0.7, 1.01], side: "left", top: "58%" },
 ];
 
-export default function StoryHero({ name, video, poster, onSettled }: Props) {
+export default function StoryHero({ name, video, poster, onSettled, loadingOnly }: Props) {
   const [t, setT] = useState(0);
   const [done, setDone] = useState(false);
   const doneRef = useRef(false);
@@ -153,7 +155,7 @@ export default function StoryHero({ name, video, poster, onSettled }: Props) {
             </div>
             <span className="text-[10px] tracking-[0.2em] text-white/35">向下滚</span>
           </>
-        ) : (
+        ) : loadingOnly ? null : (
           <div className="animate-bounce flex flex-col items-center gap-1.5">
             <span className="text-[10.5px] tracking-[0.24em] text-white/45">往下看你的盘</span>
             <span className="text-[15px] text-white/35">↓</span>

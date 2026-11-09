@@ -31,7 +31,7 @@ type Collected = {
   costs: string[];
 };
 
-type Phase = "teaser" | "play" | "transition" | "ending";
+type Phase = "play" | "loadingFree" | "teaser" | "transition" | "ending";
 
 export default function StoryPlayer({ story }: { story: StoryScript }) {
   // 把 chapters 摊平成线性 beats，并记住每个 beat 属于哪一章
@@ -59,18 +59,32 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   const advance = useCallback(() => {
     setPicked(null);
     if (i < flat.length - 1) setI((x) => x + 1);
-    else setPhase("teaser");
+    else setPhase("loadingFree");
   }, [i, flat.length]);
 
-  // 真实顺序：剧本 → teaser → 结果
-  // （sajutight 的 ec 数组：onboarding → input → loading:free → teaser → payment → loading:paid → result）
+  // 真实顺序（sajutight 的 ec 数组）：
+  //   onboarding → input → loading:free → teaser → payment → loading:paid → result
+  //
+  // 对应到我们：
+  //   play（剧本+摇卦）→ loadingFree（带名字气泡的视频）→ teaser（15 页图文）
+  //   → loadingPaid（等待/付费）→ result（长图文报告）
+  if (phase === "loadingFree") {
+    return (
+      <StoryHero
+        name={name}
+        video="/video/07-reveal.mp4"
+        poster="/img/c4-gaze.jpg"
+        loadingOnly
+        onSettled={() => setPhase("teaser")}
+      />
+    );
+  }
+
   if (phase === "teaser") {
     return <Teaser onDone={() => setPhase("transition")} />;
   }
 
   if (phase === "transition") {
-    // 摇卦之后：视频首屏 + 气泡，滚动向下就是结局和图文报告。
-    // 不跳转、不点按钮——这是 sajutight 的做法。
     return (
       <div className="mx-auto w-full max-w-[440px] bg-[#0b0809]">
         <StoryHero
