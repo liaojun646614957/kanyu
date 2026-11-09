@@ -43,7 +43,7 @@ export type Beat = {
   choices?: Choice[];
   /** 需要用户输入 */
   input?: {
-    field: "birth" | "hour" | "gender";
+    field: "birth" | "hour" | "gender" | "name";
     label: string;
     skip?: string;
   };
@@ -268,14 +268,15 @@ export const STORY_SEVEN: StoryScript = {
           art: A.reading,
           video: V.reading,
           who: "her",
-          text: "「要往下走，我得先知道你生在哪一格。」",
+          text: "「要往下走，我得先知道你叫什么。」",
+          input: { field: "name", label: "你的名字" },
         },
         {
           id: "c5b",
           art: A.gaze,
           video: V.gaze,
           who: "her",
-          text: "「先告诉我，你是男是女。」",
+          text: "「还有，你是男是女。」",
           choices: [
             { label: "女", tag: "female", reply: "「嗯。」她点了点头。" },
             { label: "男", tag: "male", reply: "「嗯。」她点了点头。" },

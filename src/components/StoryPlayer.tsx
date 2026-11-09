@@ -7,6 +7,7 @@ import { PERSONA, PERSONA_FALLBACK } from "@/lib/persona";
 import { downloadPoster } from "@/lib/poster";
 import type { Beat, StoryScript } from "@/lib/story";
 import ReportReader from "@/components/ReportReader";
+import Transition from "@/components/Transition";
 import { buildReport } from "@/lib/report";
 
 /**
@@ -21,6 +22,7 @@ import { buildReport } from "@/lib/report";
  */
 
 type Collected = {
+  name: string;
   birth: string;
   hour: string;
   tags: string[];
@@ -28,7 +30,7 @@ type Collected = {
   costs: string[];
 };
 
-type Phase = "play" | "ending";
+type Phase = "play" | "transition" | "ending";
 
 export default function StoryPlayer({ story }: { story: StoryScript }) {
   // 把 chapters 摊平成线性 beats，并记住每个 beat 属于哪一章
@@ -44,6 +46,7 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   const [phase, setPhase] = useState<Phase>("play");
   const [tags, setTags] = useState<string[]>([]);
   const [costs, setCosts] = useState<string[]>([]);
+  const [name, setName] = useState("");
   const [birth, setBirth] = useState("1995-03-15");
   const [hour, setHour] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
@@ -55,11 +58,23 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   const advance = useCallback(() => {
     setPicked(null);
     if (i < flat.length - 1) setI((x) => x + 1);
-    else setPhase("ending");
+    else setPhase("transition");
   }, [i, flat.length]);
 
+  if (phase === "transition") {
+    return (
+      <Transition
+        name={name}
+        video="/video/07-reveal.mp4"
+        poster="/img/c4-gaze.jpg"
+        duration={9000}
+        onDone={() => setPhase("ending")}
+      />
+    );
+  }
+
   if (phase === "ending") {
-    return <Ending story={story} data={{ birth, hour, tags, lines, costs }} />;
+    return <Ending story={story} data={{ name, birth, hour, tags, lines, costs }} />;
   }
 
   if (!beat) return null;
@@ -171,8 +186,10 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
           {beat.input && (
             <InputBlock
               beat={beat}
+              name={name}
               birth={birth}
               hour={hour}
+              setName={setName}
               setBirth={setBirth}
               setHour={setHour}
               onNext={advance}
@@ -369,32 +386,48 @@ function AutoAdvance({ hold, onDone }: { hold: number; onDone: () => void }) {
 
 function InputBlock({
   beat,
+  name,
   birth,
   hour,
+  setName,
   setBirth,
   setHour,
   onNext,
 }: {
   beat: Beat;
+  name: string;
   birth: string;
   hour: string;
+  setName: (v: string) => void;
   setBirth: (v: string) => void;
   setHour: (v: string) => void;
   onNext: () => void;
 }) {
-  const isBirth = beat.input!.field === "birth";
-  const val = isBirth ? birth : hour;
-  const set = isBirth ? setBirth : setHour;
-  const valid = isBirth ? /^\d{4}-\d{2}-\d{2}$/.test(birth) : true;
+  const field = beat.input!.field;
+  const isName = field === "name";
+  const isBirth = field === "birth";
+  const val = isName ? name : isBirth ? birth : hour;
+  const set = isName ? setName : isBirth ? setBirth : setHour;
+  const valid = isName
+    ? name.trim().length >= 1
+    : isBirth
+      ? /^\d{4}-\d{2}-\d{2}$/.test(birth)
+      : true;
+
+  const inputType = isName ? "text" : isBirth ? "date" : "time";
 
   return (
     <div className="animate-fade flex flex-col gap-2.5">
       <div className="rounded-2xl border border-white/15 bg-black/50 px-4 py-3.5 backdrop-blur-md">
         <input
-          type={isBirth ? "date" : "time"}
+          type={inputType}
           value={val}
+          maxLength={isName ? 12 : undefined}
+          placeholder={isName ? "写下来，她记得住" : undefined}
           onChange={(e) => set(e.target.value)}
-          className="w-full bg-transparent text-center font-serif text-[21px] tabular-nums tracking-wider text-white outline-none [color-scheme:dark]"
+          className={`w-full bg-transparent text-center font-serif text-white outline-none placeholder:text-white/25 [color-scheme:dark] ${
+            isName ? "text-[22px] tracking-[0.1em]" : "text-[21px] tabular-nums tracking-wider"
+          }`}
         />
       </div>
       <button
@@ -597,7 +630,10 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
           {ending?.title}
         </h1>
 
-        <p className="animate-fade mt-4 text-[13px] leading-7 text-white/72">{ending?.body}</p>
+        <p className="animate-fade mt-4 text-[13px] leading-7 text-white/72">
+          {data.name.trim() ? `${data.name.trim()}，` : ""}
+          {ending?.body}
+        </p>
 
         {data.costs.length > 0 && (
           <div className="mt-5 flex flex-col gap-1.5 rounded-xl border border-white/10 bg-black/40 p-3.5 backdrop-blur-md">
@@ -651,7 +687,7 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
                 trap: result.persona.trap,
                 doThis: result.persona.doThis,
               },
-              undefined,
+              data.name.trim() || undefined,
               data.tags.includes("male") ? "male" : "female",
             )}
             onClose={() => setReportOpen(false)}
