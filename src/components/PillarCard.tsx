@@ -172,45 +172,67 @@ export default function PillarCard() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* 表单 */}
+      {/* 表单 —— 先给一句「你会得到什么」，再要信息 */}
       {stage === "form" && (
-        <div className="animate-rise flex flex-col gap-5">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs tracking-widest text-ink-400">出生日期（公历）</label>
-            <input
-              type="date"
-              value={birth}
-              min="1900-01-01"
-              max="2100-12-31"
-              onChange={(e) => setBirth(e.target.value)}
-              className={field}
-            />
+        <div className="animate-rise flex flex-col gap-7">
+          <div className="flex flex-col gap-2">
+            <h2 className="font-serif text-[23px] leading-snug text-ink-100">
+              你的生日决定了
+              <br />
+              你是哪一柱人
+            </h2>
+            <p className="text-[12.5px] leading-6 text-ink-400">
+              六十年一个循环，一天一格。同一格出生的人有共同的底色。
+              告诉我日期，我给你看这一格是什么。
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs tracking-widest text-ink-400">
-                出生时辰 <span className="text-ink-600">选填</span>
-              </label>
-              <input
-                type="time"
-                value={hour}
-                onChange={(e) => setHour(e.target.value)}
-                className={field}
-              />
+          {/* 日期：做成大卡片而不是输入行 */}
+          <div className="relative overflow-hidden rounded-xl border border-ink-700 bg-gradient-to-b from-ink-850 to-ink-900 p-5">
+            <div className="pointer-events-none absolute -right-6 -top-8 font-serif text-[90px] leading-none text-ink-800/40 select-none">
+              生
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs tracking-widest text-ink-400">性别</label>
-              <div className="flex gap-2">
+            <label className="relative flex flex-col gap-1.5">
+              <span className="text-[10.5px] tracking-[0.22em] text-ink-500">出生日期 · 公历</span>
+              <input
+                type="date"
+                value={birth}
+                min="1900-01-01"
+                max="2100-12-31"
+                onChange={(e) => setBirth(e.target.value)}
+                className="w-full bg-transparent font-serif text-[22px] tabular-nums text-ink-100 outline-none [color-scheme:dark]"
+              />
+            </label>
+          </div>
+
+          {/* 时辰 + 性别：并排的小卡 */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-ink-800 bg-ink-900/60 p-3.5">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-[10px] tracking-[0.18em] text-ink-500">
+                  出生时间 <span className="text-ink-700">选填</span>
+                </span>
+                <input
+                  type="time"
+                  value={hour}
+                  onChange={(e) => setHour(e.target.value)}
+                  className="w-full bg-transparent text-[13px] tabular-nums text-ink-200 outline-none [color-scheme:dark]"
+                />
+              </label>
+            </div>
+
+            <div className="rounded-lg border border-ink-800 bg-ink-900/60 p-3.5">
+              <span className="text-[10px] tracking-[0.18em] text-ink-500">性别</span>
+              <div className="mt-1.5 flex gap-1.5">
                 {(["female", "male"] as const).map((g) => (
                   <button
                     key={g}
                     type="button"
                     onClick={() => setGender(g)}
-                    className={`press flex-1 rounded-md border py-2.5 text-sm ${
+                    className={`press flex-1 rounded py-1 text-[12px] transition-colors ${
                       gender === g
-                        ? "border-cinnabar-600 bg-cinnabar-600/12 text-cinnabar-300"
-                        : "border-ink-700 bg-ink-900 text-ink-300"
+                        ? "bg-cinnabar-600/20 text-cinnabar-300"
+                        : "text-ink-500 hover:text-ink-300"
                     }`}
                   >
                     {g === "female" ? "女" : "男"}
@@ -224,15 +246,15 @@ export default function PillarCard() {
             type="button"
             onClick={start}
             disabled={!parsed}
-            className="press mt-1 w-full rounded-md bg-cinnabar-600 py-3 text-sm font-medium tracking-widest text-white disabled:opacity-40"
+            className="press w-full rounded-md bg-cinnabar-600 py-3.5 text-[13px] font-medium tracking-[0.12em] text-white disabled:opacity-40"
           >
-            只输入生日，先出一张卡
+            看我是哪一柱
           </button>
 
-          <p className="text-center text-xs leading-relaxed text-ink-500">
-            不填时辰也能看。填了会多一个维度。
+          <p className="text-center text-[10.5px] leading-relaxed text-ink-600">
+            不填时间也能算，填了会多一个维度。
             <br />
-            内容仅供娱乐参考，不构成任何决策建议。
+            内容仅供娱乐参考 · 生日只在你的手机里算，不上传
           </p>
         </div>
       )}

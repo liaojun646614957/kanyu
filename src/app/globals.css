@@ -156,6 +156,77 @@ body::before {
   transform: rotateY(180deg);
 }
 
+/* 牌堆里的卡 */
+.card-in-stack {
+  width: 108px;
+  height: 156px;
+  border-radius: 10px;
+  border: 1px solid #3a352f;
+  background: linear-gradient(160deg, #201d1a 0%, #14120f 60%, #0e0c0a 100%);
+  box-shadow:
+    0 1px 0 0 rgba(232, 225, 214, 0.06) inset,
+    0 18px 36px -12px rgba(0, 0, 0, 0.85);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.card-face-back {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 8px;
+}
+
+/* 干支环缓慢旋转 */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.jiazi-ring {
+  animation: spin-slow 240s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jiazi-ring {
+    animation: none;
+  }
+}
+
+/* 星点闪烁 */
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* 牌面揭示 */
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card-in {
+  animation: card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* 按钮按压反馈 */
 .press {
   transition:
