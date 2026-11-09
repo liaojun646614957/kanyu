@@ -691,6 +691,7 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
               data.tags.includes("male") ? "male" : "female",
             )}
             onClose={() => setReportOpen(false)}
+            userName={data.name.trim() || undefined}
           />
         </div>
       )}

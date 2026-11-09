@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Chapter, Report, Section } from "@/lib/report";
+import ChapterToc from "@/components/ChapterToc";
+import PersuasionPage from "@/components/PersuasionPage";
 
 /**
  * 报告阅读器。
@@ -18,9 +20,11 @@ import type { Chapter, Report, Section } from "@/lib/report";
 export default function ReportReader({
   report,
   onClose,
+  userName,
 }: {
   report: Report;
   onClose: () => void;
+  userName?: string;
 }) {
   const [activeCh, setActiveCh] = useState(0);
   const chRefs = useRef<(HTMLElement | null)[]>([]);
@@ -82,7 +86,7 @@ export default function ReportReader({
             chRefs.current[i] = el;
           }}
         >
-          <ChapterView chapter={ch} />
+          <ChapterView chapter={ch} userName={userName} />
         </section>
       ))}
 
@@ -95,7 +99,7 @@ export default function ReportReader({
  * 一章
  * ------------------------------------------------------------------ */
 
-function ChapterView({ chapter }: { chapter: Chapter }) {
+function ChapterView({ chapter, userName }: { chapter: Chapter; userName?: string }) {
   const [unlocked, setUnlocked] = useState(!chapter.paid);
 
   return (
@@ -156,8 +160,18 @@ function ChapterView({ chapter }: { chapter: Chapter }) {
         </div>
       </div>
 
+      {/* 章节目录：抄 mzpian 的 chapter_n.png 结构 */}
+      {chapter.toc && (
+        <ChapterToc
+          no={chapter.no}
+          title={chapter.subtitle}
+          toc={chapter.toc}
+          motif={chapter.no === 1 ? "heart" : chapter.no === 2 ? "spider" : "eye"}
+        />
+      )}
+
       {/* 小节 */}
-      <div className="relative px-5 pb-16 pt-6">
+      <div className="relative px-5 pb-16 pt-8">
         <div className="flex flex-col gap-14">
           {chapter.sections.map((s, i) => {
             const locked = !unlocked && i > 0;
@@ -166,11 +180,11 @@ function ChapterView({ chapter }: { chapter: Chapter }) {
           })}
         </div>
 
-        {/* 付费遮罩 */}
+        {/* 付费：整屏说服页 */}
         {!unlocked && (
           <div className="relative mt-2">
             {/* 露出下一节的标题，制造"想知道" */}
-            <div className="pointer-events-none select-none opacity-25">
+            <div className="pointer-events-none select-none opacity-20">
               <h3 className="text-[19px] font-semibold leading-[1.4] tracking-[-0.1px] text-[#2F0F0F]">
                 {chapter.sections[1]?.title}
               </h3>
@@ -178,27 +192,16 @@ function ChapterView({ chapter }: { chapter: Chapter }) {
                 {chapter.sections[1]?.subtitle}
               </p>
             </div>
+            <div className="absolute inset-x-0 -top-10 bottom-0 bg-gradient-to-b from-white/0 via-white/92 to-white" />
 
-            <div className="absolute inset-x-0 -top-6 bottom-0 bg-gradient-to-b from-white/0 via-white/90 to-white" />
-
-            <div className="relative mt-6 rounded-2xl border border-black/8 bg-[#FAF8F5] p-5">
-              <p className="text-[15px] font-semibold leading-[1.4] text-[#2F0F0F]">
-                下面 {chapter.sections.length - 1} 节要付费才能看
-              </p>
-              <p className="mt-2 text-[12.5px] leading-[1.6] text-[#7C7C86]">
-                这几节讲的是：
-                {chapter.sections.slice(1).map((s) => s.title).join("、")}。
-              </p>
-              <button
-                type="button"
-                onClick={() => setUnlocked(true)}
-                className="press mt-4 w-full rounded-full bg-cinnabar-500 py-3.5 text-[14px] font-medium text-white shadow-[0_10px_30px_-10px_rgba(207,74,52,0.8)]"
-              >
-                解锁完整报告
-              </button>
-              <p className="mt-2.5 text-center text-[10px] text-black/25">
-                演示版本：点击即解锁，无需真实支付
-              </p>
+            <div className="relative mt-10 -mx-5">
+              <PersuasionPage
+                masterName="朱砂"
+                userName={userName}
+                pages={chapter.sections.length + 15}
+                onUnlock={() => setUnlocked(true)}
+                onClose={() => setUnlocked(false)}
+              />
             </div>
           </div>
         )}

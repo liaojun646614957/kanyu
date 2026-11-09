@@ -52,6 +52,14 @@ export type Chapter = {
   coverOffsetY?: number;
   /** 是否付费章节 */
   paid: boolean;
+  /**
+   * 章节目录：3 组要点，渲染成「编号 + 主标题 + ♦/♦♦/♦♦♦ 递增子项」。
+   * 抄自 mzpian 的 chapter_n.png —— 在正文之前先给目录，制造"后面还有很多"的预期。
+   */
+  toc?: {
+    heading: string;
+    items: string[];
+  }[];
   sections: Section[];
 };
 
@@ -166,6 +174,20 @@ export function buildChapter1(
     cover: CH1_COVER,
     coverOffsetY: -50,
     paid: false,
+    toc: [
+      {
+        heading: "你的底色：写在生日里的事",
+        items: [`${pillars.day.text}这一格的人共同的底色`, "为什么你会先反应，再想清楚"],
+      },
+      {
+        heading: "你身上最足的那股劲",
+        items: [`${el.top}最多的意思`, "它让你的第一反应总是比别人快半步"],
+      },
+      {
+        heading: "你在关系里的本能",
+        items: [`${pillars.day.gan}日主的人怎么爱人`, dm.style, "你真正需要的是哪一种人"],
+      },
+    ],
     sections: [
       {
         title: `你的底色：${pillars.day.text}`,
@@ -230,6 +252,20 @@ export function buildChapter2(
     cover: "/img/c3-reading.jpg",
     coverOffsetY: -30,
     paid: false,
+    toc: [
+      {
+        heading: "你反复遇到的那件事",
+        items: ["换个对象、换个城市，剧本几乎一样", "你以为是运气，其实是同一个选择"],
+      },
+      {
+        heading: "这次为什么不一样",
+        items: ["你开始问「我是不是也有问题」", "循环的出口就在这句话里"],
+      },
+      {
+        heading: "对方眼里的你",
+        items: ["同一件事，他看到的和你看到的不是同一件", "你以为的克制，在他那里是冷淡", "你只需要说一句翻译过来的话"],
+      },
+    ],
     sections: [
       {
         title: "你反复遇到的那件事",
@@ -284,6 +320,20 @@ export function buildChapter3(
     cover: "/img/c5-hand.jpg",
     coverOffsetY: -20,
     paid: true,
+    toc: [
+      {
+        heading: "他会是什么样的人",
+        items: [`夫妻宫里透出的${p.starGan}（${p.starTenGod}）`, "你会注意到的那个特征"],
+      },
+      {
+        heading: "你们会怎么开始",
+        items: ["他会怎么追你", `这段关系最容易出问题的地方：${p.risk.split("。")[0]}`],
+      },
+      {
+        heading: "你们会在哪里遇到",
+        items: ["日支决定的场合", "这段关系会怎么走", "你在这段关系里最该注意的一件事"],
+      },
+    ],
     sections: [
       {
         title: "他的样子",
