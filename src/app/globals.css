@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #0b0a09;
+  --color-ink-900: #121110;
+  --color-ink-850: #171614;
+  --color-ink-800: #1e1c19;
+  --color-ink-700: #2a2723;
+  --color-ink-600: #3a352f;
+  --color-ink-500: #554d44;
+  --color-ink-400: #7a6f63;
+  --color-ink-300: #a2978a;
+  --color-ink-200: #c8bfb2;
+  --color-ink-100: #e8e1d6;
+
+  --color-cinnabar-600: #b23a2a;
+  --color-cinnabar-500: #cf4a34;
+  --color-cinnabar-400: #e2604a;
+  --color-cinnabar-300: #ee8b76;
+
+  --color-gold-500: #c9a227;
+  --color-gold-400: #dcb94a;
+
+  --font-serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC",
+    "SimSun", ui-serif, Georgia, serif;
+  --font-sans: system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 纸纹：极淡的噪点，避免大面积纯黑发死 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- 动效 ---------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes coin-flip {
+  0% {
+    transform: rotateX(0) scale(1);
+  }
+  55% {
+    transform: rotateX(720deg) scale(1.06);
+  }
+  100% {
+    transform: rotateX(1440deg) scale(1);
+  }
+}
+
+@keyframes shake-x {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  30% {
+    transform: translateX(-4px) rotate(-1.2deg);
+  }
+  70% {
+    transform: translateX(4px) rotate(1.2deg);
+  }
+}
+
+.animate-rise {
+  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade {
+  animation: fade 0.4s ease both;
+}
+
+.anim-coin {
+  animation: coin-flip 0.62s cubic-bezier(0.3, 1.35, 0.45, 1) both;
+}
+
+.anim-shake {
+  animation: shake-x 0.5s ease-in-out both;
+}
+
+/* 逐段揭示 */
+.reveal-item {
+  opacity: 0.16;
+  transition:
+    opacity 0.5s ease,
+    border-color 0.5s ease,
+    transform 0.5s ease;
+  transform: translateY(3px);
+}
+
+.reveal-item.is-on {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 牌面翻转 */
+.flip {
+  transform-style: preserve-3d;
+  transition: transform 0.62s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+
+.flip.is-open {
+  transform: rotateY(180deg);
+}
+
+.face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.face-back {
+  transform: rotateY(180deg);
+}
+
+/* 按钮按压反馈 */
+.press {
+  transition:
+    transform 0.14s cubic-bezier(0.3, 1.4, 0.5, 1),
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+.press:active:not(:disabled) {
+  transform: scale(0.965);
+}
