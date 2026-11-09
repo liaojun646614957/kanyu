@@ -8,6 +8,7 @@ import { downloadPoster } from "@/lib/poster";
 import type { Beat, StoryScript } from "@/lib/story";
 import StoryBook from "@/components/StoryBook";
 import StoryHero from "@/components/StoryHero";
+import Teaser from "@/components/Teaser";
 import { buildReport } from "@/lib/report";
 
 /**
@@ -30,7 +31,7 @@ type Collected = {
   costs: string[];
 };
 
-type Phase = "play" | "transition" | "ending";
+type Phase = "teaser" | "play" | "transition" | "ending";
 
 export default function StoryPlayer({ story }: { story: StoryScript }) {
   // 把 chapters 摊平成线性 beats，并记住每个 beat 属于哪一章
@@ -42,8 +43,8 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
     return out;
   }, [story]);
 
+  const [phase, setPhase] = useState<Phase>("teaser");
   const [i, setI] = useState(0);
-  const [phase, setPhase] = useState<Phase>("play");
   const [tags, setTags] = useState<string[]>([]);
   const [costs, setCosts] = useState<string[]>([]);
   const [name, setName] = useState("");
@@ -60,6 +61,10 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
     if (i < flat.length - 1) setI((x) => x + 1);
     else setPhase("transition");
   }, [i, flat.length]);
+
+  if (phase === "teaser") {
+    return <Teaser onDone={() => setPhase("play")} />;
+  }
 
   if (phase === "transition") {
     // 摇卦之后：视频首屏 + 气泡，滚动向下就是结局和图文报告。
