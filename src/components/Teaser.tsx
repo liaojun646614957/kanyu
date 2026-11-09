@@ -120,7 +120,7 @@ export default function Teaser({ onDone }: { onDone: () => void }) {
       {/* 底部提示 */}
       <div className="relative z-20 flex flex-col items-center gap-1.5 pb-7">
         <span className="text-[10px] tracking-[0.22em] text-white/32">
-          {last ? "点一下，开始" : "轻点继续"}
+          {last ? "点一下，看结果" : "轻点继续"}
         </span>
         <span className="animate-bounce text-[13px] text-white/25">↓</span>
       </div>

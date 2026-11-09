@@ -43,7 +43,7 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
     return out;
   }, [story]);
 
-  const [phase, setPhase] = useState<Phase>("teaser");
+  const [phase, setPhase] = useState<Phase>("play");
   const [i, setI] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [costs, setCosts] = useState<string[]>([]);
@@ -59,11 +59,13 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   const advance = useCallback(() => {
     setPicked(null);
     if (i < flat.length - 1) setI((x) => x + 1);
-    else setPhase("transition");
+    else setPhase("teaser");
   }, [i, flat.length]);
 
+  // 真实顺序：剧本 → teaser → 结果
+  // （sajutight 的 ec 数组：onboarding → input → loading:free → teaser → payment → loading:paid → result）
   if (phase === "teaser") {
-    return <Teaser onDone={() => setPhase("play")} />;
+    return <Teaser onDone={() => setPhase("transition")} />;
   }
 
   if (phase === "transition") {

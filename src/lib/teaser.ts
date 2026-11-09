@@ -40,20 +40,20 @@ const A = {
 };
 
 export const TEASER: Beat[] = [
-  // ── 1. 开口（人）──
+  // ── 1. 开口（人）：盘已算完，她把结果拿在手上 ──
   {
     art: A.face,
-    text: "過來。",
+    text: "算完了。",
     style: "center",
   },
   {
     art: A.face,
-    text: "別站在門口。\n進來，把門帶上。",
+    text: "別急。\n先坐下，我一樣一樣跟你說。",
     style: "bubble",
     pos: "left",
   },
 
-  // ── 2. 身份（物：镜片，暗示她能看穿）──
+  // ── 2. 身份（物：镜片，她怎么看见的）──
   {
     art: A.mirror,
     text: "我是朱砂。",
@@ -67,44 +67,45 @@ export const TEASER: Beat[] = [
   },
   {
     art: A.gaze,
-    text: "大多數人進來的時候，\n都說自己只是好奇。",
+    text: "大多數人拿到結果，\n第一件事是問「準不準」。",
     style: "top",
   },
   {
     art: A.turned,
-    text: "但沒有一個是真的只是好奇。",
+    text: "但準不準，\n你自己心裡最清楚。",
     style: "center",
   },
 
   // ── 3. 点破（物：姻缘线）──
   {
     art: A.thread,
-    text: "你也是。",
-    style: "center",
+    text: "你的盤上，\n有一根很清楚的線。",
+    style: "top",
+    accent: "很清楚的線",
   },
   {
     art: A.thread,
-    text: "你心裡有一個人的名字。\n你沒說，但從進門就在想。",
+    text: "它從你的日柱出去，\n一直連到一個人身上。",
     style: "bubble",
     pos: "left",
-    accent: "名字",
+    accent: "一個人",
   },
   {
     art: A.hand,
-    text: "原本不該這樣做的。",
+    text: "那個人，\n不是你想的那個。",
     style: "top",
+    accent: "不是你想的那個",
   },
 
-  // ── 4. 施法（物：烟，她真的在做事）──
+  // ── 4. 施法（物：烟，她真的看到了什么）──
   {
     art: A.smoke,
-    text: "但我剛才順著你的姻緣線，\n看了一下。",
+    text: "我順著那根線看過去。",
     style: "top",
-    accent: "姻緣線",
   },
   {
     art: A.smoke,
-    text: "到很遠很遠。",
+    text: "看到了很遠的地方。",
     style: "bubble",
     pos: "right",
   },
@@ -123,13 +124,13 @@ export const TEASER: Beat[] = [
   },
   {
     art: A.shush,
-    text: "先告訴我你生在哪一天。",
+    text: "你的盤，我已經看完了。",
     style: "bubble",
     pos: "left",
   },
   {
     art: A.shush,
-    text: "剩下的，\n我慢慢講給你聽。",
+    text: "接下來這些，\n我不會說得太好聽。",
     style: "bottom",
   },
 ];
