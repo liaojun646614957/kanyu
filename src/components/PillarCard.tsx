@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { buildFourPillars, elementCount, dayMasterStrength, WUXING, GAN_ELEMENT } from "@/lib/ganzhi";
+import { buildFourPillars, elementCount, dayMasterStrength, WUXING } from "@/lib/ganzhi";
 import { PERSONA, PERSONA_FALLBACK } from "@/lib/persona";
 import { downloadPoster } from "@/lib/poster";
 
@@ -230,7 +230,7 @@ export default function PillarCard() {
           </button>
 
           <p className="text-center text-xs leading-relaxed text-ink-500">
-            不填时辰也能看日柱。填了会补上时柱与完整四柱。
+            不填时辰也能看。填了会多一个维度。
             <br />
             内容仅供娱乐参考，不构成任何决策建议。
           </p>
@@ -240,71 +240,108 @@ export default function PillarCard() {
       {/* 结果 */}
       {stage !== "form" && result && (
         <div ref={cardRef} className="flex flex-col gap-6">
-          {/* 人格 */}
+          {/* 人格 —— 先说结论，术语全部往后放 */}
           <div
             className={`flex flex-col gap-4 transition-opacity duration-500 ${
               revealStep >= 1 ? "opacity-100" : "opacity-0"
             }`}
           >
-            <div className="flex items-center gap-3">
-              <span className="font-serif text-[13px] tracking-[0.3em] text-cinnabar-400">
-                {result.fp.day.text}日柱
-              </span>
-              <span className="h-px flex-1 bg-ink-700" />
-              <span className="text-[11px] tabular-nums text-ink-500">
-                {result.strength.label} · 同党 {result.strength.ratio}%
-              </span>
-            </div>
-
-            <h2 className="font-serif text-[26px] leading-tight tracking-wide text-ink-100">
+            <h2 className="font-serif text-[27px] leading-tight tracking-wide text-ink-100">
               {result.persona.tag}
             </h2>
 
             <p className="text-[15px] leading-7 text-ink-200">{result.persona.core}</p>
           </div>
 
-          {/* 四柱 + 五行 */}
-          <div
-            className={`flex flex-col gap-4 border-t border-ink-800 pt-5 transition-opacity duration-500 ${
+          {/* 证据 —— 可折叠，默认收起 */}
+          <details
+            className={`group border-t border-ink-800 pt-4 transition-opacity duration-500 ${
               revealStep >= 2 ? "opacity-100" : "opacity-0"
             }`}
           >
-            <PillarGrid
-              pillars={[
-                { label: "年柱", text: result.fp.year.text },
-                { label: "月柱", text: result.fp.month.text },
-                { label: "日柱", text: result.fp.day.text, sub: "日主" },
-                { label: "时柱", text: result.fp.hour?.text ?? null, sub: result.fp.hour ? "" : "未填" },
-              ]}
-            />
-
-            <div className="flex items-center justify-between text-[11px] text-ink-500">
-              <span>
-                日主 {result.fp.day.gan}（{GAN_ELEMENT[result.fp.day.gan]}）
+            <summary className="flex cursor-pointer list-none items-center justify-between text-[11px] text-ink-500">
+              <span>凭什么这么说？</span>
+              <span className="flex items-center gap-1.5">
+                <span className="font-serif text-ink-400">{result.fp.day.text}</span>
+                <span className="transition-transform group-open:rotate-180">▾</span>
               </span>
-              <span className="tabular-nums">同党占比 {result.strength.ratio}%</span>
-            </div>
+            </summary>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <Radar data={wxData} />
-              <div className="flex flex-1 flex-col gap-2">
-                {wxData.map((d) => (
-                  <div key={d.el} className="flex items-center gap-3">
-                    <span className="w-4 font-serif text-sm text-ink-300">{d.el}</span>
-                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-ink-800">
-                      <div
-                        className="h-full rounded-full bg-cinnabar-600 transition-[width] duration-700"
-                        style={{ width: `${Math.min(100, (d.v / Math.max(...wxData.map((x) => x.v), 1)) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="w-8 text-right text-[11px] tabular-nums text-ink-400">
-                      {d.v}
-                    </span>
-                  </div>
-                ))}
+            <div className="mt-4 flex flex-col gap-4">
+              <p className="text-[11px] leading-relaxed text-ink-500">
+                你的生日在干支历里落在「{result.fp.day.text}」这一格。六十天一个循环，
+                这一格的人有共同的底色。下面是你这张盘的构成。
+              </p>
+
+              <PillarGrid
+                pillars={[
+                  { label: "年", text: result.fp.year.text },
+                  { label: "月", text: result.fp.month.text },
+                  { label: "日", text: result.fp.day.text, sub: "你自己" },
+                  {
+                    label: "时",
+                    text: result.fp.hour?.text ?? null,
+                    sub: result.fp.hour ? "" : "没填",
+                  },
+                ]}
+              />
+
+              {/* 把「身强/同党」翻译成人话 */}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between text-[11px] text-ink-500">
+                  <span>自身能量</span>
+                  <span className="tabular-nums">{result.strength.ratio}%</span>
+                </div>
+                <div className="h-1 overflow-hidden rounded-full bg-ink-800">
+                  <div
+                    className="h-full rounded-full bg-gold-500 transition-[width] duration-700"
+                    style={{ width: `${result.strength.ratio}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
+                  {result.strength.label === "身强"
+                    ? "你的能量偏足——所以不容易被带跑，但也容易不服软。"
+                    : result.strength.label === "身弱"
+                      ? "你的能量偏弱——所以容易受影响，但你的感受力也更细。"
+                      : "你的能量偏中间——不太极端，能进能退。"}
+                </p>
               </div>
+
+              <div className="flex flex-wrap items-center gap-4">
+                <Radar data={wxData} />
+                <div className="flex flex-1 flex-col gap-2">
+                  {wxData.map((d) => (
+                    <div key={d.el} className="flex items-center gap-3">
+                      <span className="w-4 font-serif text-sm text-ink-300">{d.el}</span>
+                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-ink-800">
+                        <div
+                          className="h-full rounded-full bg-cinnabar-600 transition-[width] duration-700"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (d.v / Math.max(...wxData.map((x) => x.v), 1)) * 100,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="w-8 text-right text-[11px] tabular-nums text-ink-400">
+                        {d.v}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[10.5px] leading-relaxed text-ink-600">
+                五行 = 你性格里五种倾向的配比（木：生长/想法，火：表达/热度，土：稳定/承担，
+                金：规则/边界，水：感知/流动）。数字越大，这个倾向越明显。
+              </p>
+
+              {result.fp.notes.length > 0 && (
+                <p className="text-[10.5px] text-ink-600">{result.fp.notes.join(" · ")}</p>
+              )}
             </div>
-          </div>
+          </details>
 
           {/* 细节 */}
           <div
@@ -313,21 +350,17 @@ export default function PillarCard() {
             }`}
           >
             <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] tracking-widest text-gold-500">你的隐藏优势</span>
+              <span className="text-[11px] tracking-widest text-gold-500">这件事你做得很好</span>
               <p className="text-sm leading-6 text-ink-200">{result.persona.gift}</p>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] tracking-widest text-cinnabar-400">最容易踩的坑</span>
+              <span className="text-[11px] tracking-widest text-cinnabar-400">你会栽在这上面</span>
               <p className="text-sm leading-6 text-ink-200">{result.persona.trap}</p>
             </div>
             <div className="rounded-md border border-ink-700 bg-ink-900/70 p-4">
-              <span className="text-[11px] tracking-widest text-ink-400">今天就能做的一件事</span>
+              <span className="text-[11px] tracking-widest text-ink-400">今天就试一下</span>
               <p className="mt-1.5 text-sm leading-6 text-ink-100">{result.persona.doThis}</p>
             </div>
-
-            {result.fp.notes.length > 0 && (
-              <p className="text-[11px] text-ink-500">{result.fp.notes.join(" · ")}</p>
-            )}
           </div>
 
           {/* 操作 */}

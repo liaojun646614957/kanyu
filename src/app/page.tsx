@@ -6,9 +6,9 @@ import GuaCast from "@/components/GuaCast";
 import DailyDraw from "@/components/DailyDraw";
 
 const TABS = [
-  { id: "pillar", label: "日柱", sub: "你是什么人" },
-  { id: "gua", label: "摇卦", sub: "问一件事" },
-  { id: "draw", label: "今日一抽", sub: "今天怎么过" },
+  { id: "pillar", label: "我是什么人", sub: "看生日" },
+  { id: "gua", label: "问一件事", sub: "摇一卦" },
+  { id: "draw", label: "今天怎么过", sub: "抽一张" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
