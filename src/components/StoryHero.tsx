@@ -3,42 +3,46 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * 首屏：视频 + 气泡，向下滚动就是图文正文。
+ * 过场视频（对齐 sajutight 的 LoadingVideo）。
  *
- * 之前的错误：把过渡页做成了一个独立页面，播完 → 跳转到另一个页面 → 还要点「解锁」。
- * sajutight 的做法是：视频占满首屏，气泡按时间轴出现，
- * 视频结束（或用户开始滚动）后，**同一页继续向下**就是报告正文。
- * 没有任何跳转，没有解锁按钮。
+ * 结构是「两层」：
+ *   <div fixed inset-0 bg-black>           全屏黑底，铺满视口
+ *     <div mx-auto h-full max-w-[440px]>   中间一条手机宽度的列
+ *       <video absolute inset-0 cover>     视频只铺满这一列
  *
- * 所以这里是一个「长页面的顶部」——
- * 它不负责"切换"，只负责"首屏那一下"。
+ * 所以手机上是满屏，桌面是中间一条竖屏 + 两侧纯黑。
+ * 之前只写了 h-[100dvh] w-full，少了 max-w 这一层，桌面上会被拉成
+ * 1440px 宽——人像被裁到只剩局部，看着就像「莫名全屏了」。
+ *
+ * 气泡规格照抄原站：固定尺寸的椭圆（不是圆角矩形）、固定位置、
+ * 按视频进度的时间轴出现。
  */
 
 type Props = {
   name: string;
   video: string;
   poster: string;
-  /** 视频播完后是否吸附在顶部（让下面的图文自然接上） */
   onSettled?: () => void;
-  /** loading 模式：不提示向下滚，而是等它自动过去 */
   loadingOnly?: boolean;
 };
 
-const BUBBLES: { at: [number, number]; side: "left" | "right"; top: string }[] = [
-  { at: [0.1, 0.36], side: "left", top: "20%" },
-  { at: [0.4, 0.66], side: "right", top: "40%" },
-  { at: [0.7, 1.01], side: "left", top: "58%" },
+/** 时间轴取视频比例；尺寸/位置是原站的写死值 */
+const BUBBLES = [
+  { at: [0.08, 0.3] as const, side: "left" as const, top: "16%", w: 150, h: 188 },
+  { at: [0.4, 0.62] as const, side: "right" as const, top: "40%", w: 166, h: 206 },
+  { at: [0.72, 0.94] as const, side: "left" as const, top: "60%", w: 174, h: 216 },
 ];
 
 export default function StoryHero({ name, video, poster, onSettled, loadingOnly }: Props) {
   const [t, setT] = useState(0);
   const [done, setDone] = useState(false);
   const doneRef = useRef(false);
-
-  const who = name.trim() || "你";
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // 用视频真实进度驱动气泡（而不是定时器）——这样气泡和画面永远同步
+  const who = name.trim() || "你";
+  const lines = [who, "你終究\n來到了這裏", "準備好\n面對你的緣分"];
+
+  // 用视频真实进度驱动气泡——气泡和画面永远同步
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
@@ -61,7 +65,7 @@ export default function StoryHero({ name, video, poster, onSettled, loadingOnly 
     };
   }, [onSettled]);
 
-  // 兜底：视频加载失败也最多 6 秒后放开
+  // 兜底：视频加载失败也最多 9 秒后放开
   useEffect(() => {
     const id = window.setTimeout(() => {
       if (!doneRef.current) {
@@ -69,96 +73,85 @@ export default function StoryHero({ name, video, poster, onSettled, loadingOnly 
         setDone(true);
         onSettled?.();
       }
-    }, 6000);
+    }, 9000);
     return () => window.clearTimeout(id);
   }, [onSettled]);
 
-  const lines = [who, "你終究\n來到了這裡", "準備好\n面對你的緣分了嗎"];
-
   return (
-    <div className="relative h-[100dvh] w-full shrink-0 overflow-hidden bg-black">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={poster}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-      <video
-        ref={videoRef}
-        src={video}
-        muted
-        playsInline
-        autoPlay
-        loop
-        preload="auto"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-          done ? "opacity-40" : "opacity-100"
-        }`}
-      />
+    <div className="fixed inset-0 z-50 bg-black">
+      <div className="relative mx-auto h-full w-full max-w-[440px] overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={poster}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <video
+          ref={videoRef}
+          src={video}
+          muted
+          playsInline
+          autoPlay
+          preload="auto"
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
+            done ? "opacity-30" : "opacity-100"
+          }`}
+        />
 
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: done
-            ? "linear-gradient(180deg, rgba(8,5,6,0.86) 0%, rgba(8,5,6,0.7) 55%, #0b0809 100%)"
-            : "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.1) 30%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.9) 100%)",
-        }}
-      />
-
-      {/* 气泡 */}
-      {!done && (
-        <div className="pointer-events-none absolute inset-0">
+        {/* 气泡层：pointer-events-none，不挡任何手势 */}
+        <div className="pointer-events-none absolute inset-0 z-10">
           {BUBBLES.map((b, i) => {
             const on = t >= b.at[0] && t < b.at[1];
+            const text = lines[i] ?? "";
             const isName = i === 0;
+            const tight = isName && Array.from(who).length > 6;
             return (
               <div
                 key={i}
-                className="absolute max-w-[62%] transition-all duration-700"
+                className="absolute flex items-center justify-center px-4 text-center transition-all duration-700"
                 style={{
                   top: b.top,
-                  left: b.side === "left" ? 24 : undefined,
-                  right: b.side === "right" ? 24 : undefined,
+                  [b.side]: 16,
+                  width: b.w,
+                  height: b.h,
+                  borderRadius: "50%",
+                  background: "rgba(217,217,217,0.70)",
+                  border: "3px solid rgba(0,0,0,0.50)",
                   opacity: on ? 1 : 0,
-                  transform: on ? "translateY(0) scale(1)" : "translateY(10px) scale(0.95)",
+                  transform: on ? "scale(1)" : "scale(0.9)",
                 }}
               >
-                <div
-                  className={`rounded-[18px] border px-4 py-2.5 backdrop-blur-[3px] ${
-                    isName ? "border-white/40 bg-white/85" : "border-white/25 bg-white/70"
-                  }`}
+                <p
+                  className="whitespace-pre-line font-serif font-medium leading-tight text-black"
+                  style={{
+                    fontSize: tight ? 17 : 22,
+                    letterSpacing: "-0.4px",
+                  }}
                 >
-                  <p
-                    className={`whitespace-pre-line text-center font-serif leading-snug text-[#2a0d0d] ${
-                      isName ? "text-[22px] font-bold tracking-[0.06em]" : "text-[15px] font-medium"
-                    }`}
-                  >
-                    {lines[i]}
-                  </p>
-                </div>
+                  {text}
+                </p>
               </div>
             );
           })}
         </div>
-      )}
 
-      {/* 底部：进度 / 下滑提示 */}
-      <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-3 px-5 pb-8">
-        {!done ? (
-          <>
-            <div className="h-[2px] w-full overflow-hidden rounded-full bg-white/15">
-              <div
-                className="h-full rounded-full bg-cinnabar-400/85"
-                style={{ width: `${t * 100}%` }}
-              />
-            </div>
-            <span className="text-[10px] tracking-[0.2em] text-white/35">向下滚</span>
-          </>
-        ) : loadingOnly ? null : (
-          <div className="animate-bounce flex flex-col items-center gap-1.5">
+        {/* 顶部进度条 */}
+        <div
+          className="absolute left-4 right-4 top-4 z-20 h-1"
+          style={{ background: "rgba(250,250,250,0.20)" }}
+        >
+          <div
+            className="h-full transition-[width] duration-200"
+            style={{ width: `${Math.min(100, t * 100)}%`, background: "#e2604a" }}
+          />
+        </div>
+
+        {/* 视频播完之后（仅内嵌场景）提示下滑 */}
+        {done && !loadingOnly && (
+          <div className="absolute inset-x-0 bottom-8 z-20 flex flex-col items-center gap-1.5">
             <span className="text-[10.5px] tracking-[0.24em] text-white/45">往下看你的盘</span>
-            <span className="text-[15px] text-white/35">↓</span>
+            <span className="animate-bounce text-[15px] text-white/35">↓</span>
           </div>
         )}
       </div>

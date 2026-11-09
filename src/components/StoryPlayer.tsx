@@ -87,11 +87,6 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   if (phase === "transition") {
     return (
       <div className="mx-auto w-full max-w-[440px] bg-[#0b0809]">
-        <StoryHero
-          name={name}
-          video="/video/07-reveal.mp4"
-          poster="/img/c4-gaze.jpg"
-        />
         <Ending story={story} data={{ name, birth, hour, tags, lines, costs }} inline />
       </div>
     );
