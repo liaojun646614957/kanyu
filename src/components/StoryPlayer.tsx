@@ -6,7 +6,7 @@ import { castLine, guaOf, GUA_READING, GUA_READING_FALLBACK, TRIGRAM, type Line 
 import { PERSONA, PERSONA_FALLBACK } from "@/lib/persona";
 import { downloadPoster } from "@/lib/poster";
 import type { Beat, StoryScript } from "@/lib/story";
-import ReportReader from "@/components/ReportReader";
+import StoryBook from "@/components/StoryBook";
 import Transition from "@/components/Transition";
 import { buildReport } from "@/lib/report";
 
@@ -676,7 +676,7 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
 
       {reportOpen && result && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-white">
-          <ReportReader
+          <StoryBook
             report={buildReport(
               result.fp,
               result.counts,
@@ -691,7 +691,6 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
               data.tags.includes("male") ? "male" : "female",
             )}
             onClose={() => setReportOpen(false)}
-            userName={data.name.trim() || undefined}
           />
         </div>
       )}
