@@ -18,53 +18,67 @@ import { renderPage, type PageText, type PageStyle } from "@/lib/pageRender";
  */
 
 const ART = {
-  1: "/img/c1-cover.jpg",
-  2: "/img/c3-reading.jpg",
-  3: "/img/c5-hand.jpg",
+  1: "/img/p1.jpg",
+  2: "/img/p2.jpg",
+  3: "/img/p3.jpg",
 };
 
+/**
+ * 每章一套构图规则。
+ * 封面用 hero 大字，正文页用与背景匹配的 layout，
+ * 让文字压在留白侧，而不是盖在人物脸上。
+ */
 const THEME: Record<number, PageStyle> = {
-  1: { bg: ART[1], bgPos: "center", accent: "#d94b4b" },
-  2: { bg: ART[2], bgPos: "center", accent: "#d94b4b" },
-  3: { bg: ART[3], bgPos: "center", accent: "#d94b4b" },
+  1: { bg: ART[1], layout: "right", accent: "#d94b4b" },
+  2: { bg: ART[2], layout: "bottom", accent: "#d94b4b" },
+  3: { bg: ART[3], layout: "center", accent: "#d94b4b" },
 };
 
-/** 把一章拆成若干「页」 */
-function chapterPages(ch: Chapter): PageText[] {
-  const pages: PageText[] = [];
+/** 把一章拆成若干「页」，并标注每页的样式变体 */
+function chapterPages(ch: Chapter): { page: PageText; hero?: boolean }[] {
+  const pages: { page: PageText; hero?: boolean }[] = [];
 
-  // 1. 封面
+  // 1. 封面：hero 大字
   pages.push({
-    kicker: `CHAPTER ${String(ch.no).padStart(2, "0")}`,
-    title: ch.title,
-    subtitle: ch.subtitle,
+    hero: true,
+    page: {
+      kicker: `CHAPTER ${String(ch.no).padStart(2, "0")}`,
+      title: ch.title,
+      subtitle: ch.subtitle,
+    },
   });
 
-  // 2. 目录（有 toc 才加）
+  // 2. 目录
   if (ch.toc?.length) {
     pages.push({
-      kicker: "目录",
-      title: "这一章讲什么",
-      quotes: ch.toc.flatMap((g, i) => [
-        `${i + 1}. ${g.heading}`,
-        ...g.items.map((it) => `　${"♦".repeat(1)} ${it}`),
-      ]),
+      page: {
+        kicker: "目录",
+        title: "这一章讲什么",
+        quotes: ch.toc.flatMap((g, i) => [
+          `${i + 1}. ${g.heading}`,
+          ...g.items.map((it) => `　♦ ${it}`),
+        ]),
+      },
     });
   }
 
-  // 3. 每节：标题+副标题+金句 一页，正文 一页
+  // 3. 每节：标题+金句 一页，正文 一页
   ch.sections.forEach((s: Section, i) => {
     pages.push({
-      kicker: `${String(ch.no).padStart(2, "0")} · ${String(i + 1).padStart(2, "0")}`,
-      title: s.title,
-      subtitle: s.subtitle,
-      quotes: s.quotes,
+      page: {
+        kicker: `${String(ch.no).padStart(2, "0")} · ${String(i + 1).padStart(2, "0")}`,
+        title: s.title,
+        subtitle: s.subtitle,
+        quotes: s.quotes,
+      },
     });
     if (s.body) {
       pages.push({
-        kicker: s.title,
-        title: "",
-        paragraphs: s.body.split("\n\n").filter(Boolean),
+        page: {
+          kicker: s.title,
+          title: "",
+          paragraphs: s.body.split("\n\n").filter(Boolean),
+        },
       });
     }
   });
@@ -87,8 +101,10 @@ export default function StoryBook({ report, onClose }: { report: Report; onClose
       const all: { ch: number; page: PageText; style: PageStyle }[] = [];
 
       for (const ch of report.chapters) {
-        const style = THEME[ch.no] ?? THEME[1];
-        chapterPages(ch).forEach((p) => all.push({ ch: ch.no, page: p, style }));
+        const base = THEME[ch.no] ?? THEME[1];
+        chapterPages(ch).forEach(({ page, hero }) =>
+          all.push({ ch: ch.no, page, style: { ...base, hero } }),
+        );
       }
 
       for (let i = 0; i < all.length; i++) {
@@ -96,7 +112,6 @@ export default function StoryBook({ report, onClose }: { report: Report; onClose
         const cv = await renderPage(page, style);
         out.push({ ch, dataUrl: cv.toDataURL("image/jpeg", 0.9), h: cv.height / 2 });
         setProgress((i + 1) / all.length);
-        // 让出一帧，避免阻塞 UI
         await new Promise((r) => setTimeout(r, 0));
         setPages([...out]);
       }

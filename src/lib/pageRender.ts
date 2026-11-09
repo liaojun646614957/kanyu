@@ -28,6 +28,19 @@ export type PageText = {
   footnote?: string;
 };
 
+/**
+ * 构图类型：决定「文字安全区」在哪、压暗层怎么打。
+ *
+ * mzpian 的正文页里，文字是压在角色身体的暗部上的——
+ * 不是整张图统一压一层渐变，而是设计师专门为这行字留了位置。
+ * 我们用工整的构图类型来近似这件事：
+ *
+ *   right  —— 人物在右，左侧留白。文字走左栏。
+ *   bottom —— 人物在下，上方留白。文字走顶部。
+ *   center —— 人物居中，四周留白。文字压在全图。
+ */
+export type Layout = "right" | "bottom" | "center";
+
 export type PageStyle = {
   /** 背景图路径；不传则纯色 */
   bg?: string;
@@ -35,6 +48,8 @@ export type PageStyle = {
   bgOpacity?: number;
   /** 背景图 object-position，默认 center */
   bgPos?: string;
+  /** 构图类型 */
+  layout?: Layout;
   /** 底色 */
   base?: string;
   /** 主色（标题、强调） */
@@ -43,6 +58,8 @@ export type PageStyle = {
   text?: string;
   /** 是否叠加噪点纹理 */
   grain?: boolean;
+  /** 这一页是否用「整屏标题」样式（字更大） */
+  hero?: boolean;
 };
 
 const W = 750;
@@ -104,6 +121,9 @@ export async function renderPage(
 
   const padX = 64;
   const contentW = W - padX * 2;
+  const layout: Layout = style.layout ?? "center";
+  // right 构图时正文只占左栏，避免压到人物
+  const textW = layout === "right" ? Math.floor(contentW * 0.62) : contentW;
 
   // ---- 先量一次高度 ----
   const measure = (c: CanvasRenderingContext2D) => {
@@ -111,17 +131,18 @@ export async function renderPage(
     h += 96; // 顶部留白
     if (page.kicker) h += 34;
     if (page.title) {
-      c.font = `bold 54px ${CJK_FONT}`;
-      h += wrapCJK(c, page.title, contentW).length * 74 + 20;
+      const tSize = style.hero ? 62 : 54;
+      c.font = `bold ${tSize}px ${CJK_FONT}`;
+      h += wrapCJK(c, page.title, textW).length * (tSize + 20) + 20;
     }
     if (page.subtitle) {
       c.font = `400 26px ${SANS_FONT}`;
-      h += wrapCJK(c, page.subtitle, contentW).length * 42 + 18;
+      h += wrapCJK(c, page.subtitle, textW).length * 42 + 18;
     }
     if (page.quotes?.length) {
       c.font = `400 30px ${CJK_FONT}`;
       const qh = page.quotes.reduce(
-        (s, q) => s + wrapCJK(c, q, contentW - 56).length * 46 + 26,
+        (s, q) => s + wrapCJK(c, q, textW - 56).length * 46 + 26,
         0,
       );
       h += qh + 56;
@@ -129,12 +150,12 @@ export async function renderPage(
     if (page.paragraphs?.length) {
       c.font = `400 28px ${SANS_FONT}`;
       for (const p of page.paragraphs) {
-        h += wrapCJK(c, p, contentW).length * 50 + 30;
+        h += wrapCJK(c, p, textW).length * 50 + 30;
       }
     }
     if (page.footnote) {
       c.font = `400 20px ${SANS_FONT}`;
-      h += wrapCJK(c, page.footnote, contentW).length * 32 + 20;
+      h += wrapCJK(c, page.footnote, textW).length * 32 + 20;
     }
     h += 110; // 底部留白
     return h;
@@ -157,7 +178,6 @@ export async function renderPage(
       const dh = img.height * scale;
       ctx.save();
       ctx.globalAlpha = style.bgOpacity ?? 1;
-      // object-position: 用 bgPos 简化成 top/center
       const dy =
         style.bgPos === "top" ? 0 : style.bgPos === "bottom" ? targetH - dh : (targetH - dh) / 2;
       ctx.drawImage(img, (W - dw) / 2, dy, dw, dh);
@@ -168,14 +188,37 @@ export async function renderPage(
     ctx.fillRect(0, 0, W, H);
   }
 
-  // 压暗：保证文字可读（从顶部 0.35 → 中部 0.5 → 底部 0.92）
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, "rgba(8,5,6,0.55)");
-  grad.addColorStop(0.28, "rgba(8,5,6,0.28)");
-  grad.addColorStop(0.55, "rgba(8,5,6,0.72)");
-  grad.addColorStop(1, "rgba(8,5,6,0.97)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  // ---- 保护层：不是均匀压暗，而是按构图打「文字可读区」 ----
+  // 目标：让文字所在的一侧接近纯黑，人物所在的一侧尽量保留
+  ctx.save();
+  if (layout === "right") {
+    // 人物在右 → 左侧加一道水平渐变，右边只轻压
+    const g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, "rgba(8,5,6,0.96)");
+    g.addColorStop(0.42, "rgba(8,5,6,0.88)");
+    g.addColorStop(0.72, "rgba(8,5,6,0.35)");
+    g.addColorStop(1, "rgba(8,5,6,0.12)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  } else if (layout === "bottom") {
+    // 人物在下 → 上方压暗
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "rgba(8,5,6,0.96)");
+    g.addColorStop(0.45, "rgba(8,5,6,0.86)");
+    g.addColorStop(0.72, "rgba(8,5,6,0.34)");
+    g.addColorStop(1, "rgba(8,5,6,0.18)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "rgba(8,5,6,0.5)");
+    g.addColorStop(0.3, "rgba(8,5,6,0.3)");
+    g.addColorStop(0.6, "rgba(8,5,6,0.7)");
+    g.addColorStop(1, "rgba(8,5,6,0.97)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+  ctx.restore();
 
   // ---- 内容 ----
   let y = 96;
@@ -191,20 +234,21 @@ export async function renderPage(
   }
 
   if (page.title) {
-    ctx.font = `bold 54px ${CJK_FONT}`;
+    const tSize = style.hero ? 62 : 54;
+    ctx.font = `bold ${tSize}px ${CJK_FONT}`;
     ctx.fillStyle = "#ffffff";
     ctx.textAlign = "left";
-    for (const line of wrapCJK(ctx, page.title, contentW)) {
-      ctx.fillText(line, padX, y + 52);
-      y += 74;
+    for (const line of wrapCJK(ctx, page.title, textW)) {
+      ctx.fillText(line, padX, y + tSize - 2);
+      y += tSize + 20;
     }
     y += 20;
   }
 
   if (page.subtitle) {
     ctx.font = `400 26px ${SANS_FONT}`;
-    ctx.fillStyle = "rgba(232,225,214,0.55)";
-    for (const line of wrapCJK(ctx, page.subtitle, contentW)) {
+    ctx.fillStyle = "rgba(232,225,214,0.58)";
+    for (const line of wrapCJK(ctx, page.subtitle, textW)) {
       ctx.fillText(line, padX, y + 26);
       y += 42;
     }
@@ -226,7 +270,7 @@ export async function renderPage(
     let qy = y + 34;
     const lines: { text: string; y: number }[] = [];
     for (const q of page.quotes) {
-      for (const line of wrapCJK(ctx, q, contentW - 56)) {
+      for (const line of wrapCJK(ctx, q, textW - 56)) {
         lines.push({ text: line, y: qy });
         qy += 46;
       }
@@ -235,7 +279,7 @@ export async function renderPage(
     const boxH = qy - boxTop;
 
     ctx.fillStyle = "rgba(255,255,255,0.06)";
-    ctx.fillRect(padX - 12, boxTop, contentW + 24, boxH);
+    ctx.fillRect(padX - 12, boxTop, textW + 24, boxH);
     ctx.fillStyle = accent;
     ctx.globalAlpha = 0.85;
     ctx.fillRect(padX - 12, boxTop, 3, boxH);
@@ -252,7 +296,7 @@ export async function renderPage(
     ctx.font = `400 28px ${SANS_FONT}`;
     ctx.fillStyle = "rgba(220,213,204,0.90)";
     for (const p of page.paragraphs) {
-      for (const line of wrapCJK(ctx, p, contentW)) {
+      for (const line of wrapCJK(ctx, p, textW)) {
         ctx.fillText(line, padX, y + 28);
         y += 50;
       }
@@ -264,7 +308,7 @@ export async function renderPage(
   if (page.footnote) {
     ctx.font = `400 20px ${SANS_FONT}`;
     ctx.fillStyle = "rgba(232,225,214,0.30)";
-    for (const line of wrapCJK(ctx, page.footnote, contentW)) {
+    for (const line of wrapCJK(ctx, page.footnote, textW)) {
       ctx.fillText(line, padX, y + 20);
       y += 32;
     }
