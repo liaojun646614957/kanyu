@@ -183,10 +183,11 @@ function ChapterView({ chapter }: { chapter: Chapter }) {
 
             <div className="relative mt-6 rounded-2xl border border-black/8 bg-[#FAF8F5] p-5">
               <p className="text-[15px] font-semibold leading-[1.4] text-[#2F0F0F]">
-                下面 3 节要付费才能看
+                下面 {chapter.sections.length - 1} 节要付费才能看
               </p>
               <p className="mt-2 text-[12.5px] leading-[1.6] text-[#7C7C86]">
-                这几节讲的是：这次为什么不一样、对方眼里的你、以及你一直忽略的那一点。
+                这几节讲的是：
+                {chapter.sections.slice(1).map((s) => s.title).join("、")}。
               </p>
               <button
                 type="button"

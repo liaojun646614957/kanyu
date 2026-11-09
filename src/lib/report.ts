@@ -14,6 +14,7 @@
 
 import type { FourPillars, WuXing } from "./ganzhi";
 import { GAN_ELEMENT, WUXING } from "./ganzhi";
+import { readPartner, mbtiHint } from "./partner";
 
 /* ------------------------------------------------------------------ *
  * 类型
@@ -264,6 +265,65 @@ export function buildChapter2(
 }
 
 /* ------------------------------------------------------------------ *
+ * 第 3 章：下一个出现的人（付费）
+ * ------------------------------------------------------------------ */
+
+export function buildChapter3(
+  pillars: FourPillars,
+  counts: Record<WuXing, number>,
+  gender: "female" | "male",
+): Chapter {
+  const p = readPartner(pillars, gender);
+  const el = describeElements(counts);
+
+  return {
+    id: "ch3",
+    no: 3,
+    title: "下一个出现的人",
+    subtitle: "不是泛泛的「正缘」，是具体到你会认出来的那种",
+    cover: "/img/c5-hand.jpg",
+    coverOffsetY: -20,
+    paid: true,
+    sections: [
+      {
+        title: "他的样子",
+        subtitle: "不是长相清单，是你会注意到的那个特征",
+        tags: [
+          { emoji: "✨", label: p.kind },
+          { emoji: "🎯", label: `${p.starGan}日主` },
+        ],
+        quotes: [p.look.split("\n\n")[0]],
+        body: `你的夫妻宫（日支${pillars.day.zhi}）里藏着${p.starGan}，对应的十神是「${p.starTenGod}」。\n\n在命理里，日支是配偶的位置，藏干就是配偶的底色。所以你的盘指向的是——${p.vibe}\n\n具体到你会注意到的地方：\n\n${p.look.split("\n\n")[1] ?? p.look}`,
+      },
+      {
+        title: "他会怎么追你",
+        subtitle: "或者说，你们会怎么开始",
+        quotes: [p.style],
+        body: `这里有个细节值得说：${p.risk}\n\n不是说他不好，是这段关系里最容易出问题的就是这一点。你提前知道，就不会把「他就是这样的人」误读成「他不爱我」。`,
+      },
+      {
+        title: "他会是什么样的人",
+        subtitle: "性格与 MBTI 倾向",
+        tags: [{ emoji: "🧩", label: mbtiHint(p.starTenGod).split("——")[0] }],
+        body: `${mbtiHint(p.starTenGod).split("——")[1] ?? ""}\n\n当然 MBTI 只是个参考框架，真正有意义的是这个：${p.vibe}\n\n他大概从事这些方向：${p.job.join("、")}。\n\n不是说他一定在这些行业，而是「这类工作塑造出来的那种人」——你回想一下身边符合这个描述的人，可能已经有画面了。`,
+      },
+      {
+        title: "你们会在哪里遇到",
+        subtitle: "日支决定场合，这个推得比较准",
+        quotes: [p.scene],
+        body: `这不是玄学。日支代表「配偶所在的位置」，不同的地支对应不同的场景类型。\n\n所以接下来这段时间，你可以在这些场合里稍微留心一点——不是让你主动出击，是别在那种场合里全程低头看手机。`,
+      },
+      {
+        title: "这段关系会怎么走",
+        subtitle: "以及你该注意什么",
+        quotes: [p.prospect],
+        body: `${p.prospect}\n\n最后一件事，也是最重要的一件：\n\n${p.advice}\n\n${el.detail}\n\n你身上${el.lowText}——这意味着在这段关系里，你最容易忽略的是自己那一侧的需求。记住这一点，比记住他的长相有用。`,
+      },
+    ],
+  };
+}
+
+/* ------------------------------------------------------------------ *
  * 组装
  * ------------------------------------------------------------------ */
 
@@ -272,12 +332,14 @@ export function buildReport(
   counts: Record<WuXing, number>,
   persona: { tag: string; core: string; gift: string; trap: string; doThis: string },
   name?: string,
+  gender: "female" | "male" = "female",
 ): Report {
   return {
     product: "恋爱八字",
     chapters: [
       buildChapter1(pillars, counts, persona, name),
       buildChapter2(pillars, counts, persona),
+      buildChapter3(pillars, counts, gender),
     ],
   };
 }

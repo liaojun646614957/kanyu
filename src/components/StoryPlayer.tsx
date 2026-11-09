@@ -651,6 +651,8 @@ function Ending({ story, data }: { story: StoryScript; data: Collected }) {
                 trap: result.persona.trap,
                 doThis: result.persona.doThis,
               },
+              undefined,
+              data.tags.includes("male") ? "male" : "female",
             )}
             onClose={() => setReportOpen(false)}
           />
