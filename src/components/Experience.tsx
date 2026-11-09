@@ -74,33 +74,38 @@ export default function Experience() {
   /* ================= 封面 ================= */
   if (step === "cover") {
     return (
-      <Shell bg="/img/cover.jpg">
+      <Shell bg="/img/c1-cover.jpg" dim={0.38}>
         <div className="flex flex-1 flex-col justify-end pb-10">
+          {/* 角色对白 */}
+          <div className="animate-rise mb-6 flex flex-col gap-2">
+            <p className="font-serif text-[15px] leading-7 text-white/55">
+              「你来了。」
+            </p>
+            <p className="font-serif text-[15px] leading-7 text-white/40">
+              「把手给我，我看看你生在哪一格。」
+            </p>
+          </div>
+
           <div className="flex flex-col gap-3">
-            <span className="text-[11px] tracking-[0.4em] text-cinnabar-400">KANYU · 看余</span>
-            <h1 className="font-serif text-[38px] leading-[1.18] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.85)]">
+            <span className="text-[10.5px] tracking-[0.4em] text-cinnabar-300">KANYU · 看余</span>
+            <h1 className="font-serif text-[36px] leading-[1.2] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.9)]">
               你这一生
               <br />
               是什么调子
             </h1>
-            <p className="text-[13px] leading-6 text-white/70">
-              不用注册。三十秒。
-              <br />
-              先看你是哪一柱人。
-            </p>
           </div>
 
-          <div className="mt-9 flex flex-col gap-3">
+          <div className="mt-8 flex flex-col gap-3">
             <button
               type="button"
               onClick={() => setStep("gender")}
-              className="press flex w-full items-center justify-center gap-2 rounded-full bg-cinnabar-500 py-4 text-[14.5px] font-medium tracking-wide text-white shadow-[0_10px_40px_-8px_rgba(207,74,52,0.75)]"
+              className="press flex w-full items-center justify-center gap-2 rounded-full bg-cinnabar-500 py-4 text-[14.5px] font-medium tracking-wide text-white shadow-[0_14px_44px_-10px_rgba(207,74,52,0.95)]"
             >
               <span className="text-[11px]">▶</span>
-              开始
+              坐下，让她看
             </button>
-            <p className="text-center text-[11px] text-white/40">
-              已有 12,847 人看过自己
+            <p className="text-center text-[11px] text-white/35">
+              已有 12,847 人看过自己 · 不用注册
             </p>
           </div>
         </div>
@@ -111,7 +116,7 @@ export default function Experience() {
   /* ================= 性别 ================= */
   if (step === "gender") {
     return (
-      <Shell bg="/img/cover.jpg" dim={0.66}>
+      <Shell bg="/img/c1-cover.jpg" dim={0.52}>
         <TopBar onBack={back} progress={stepIndex / 4} />
         <div className="flex flex-1 flex-col pt-10">
           <Ask
@@ -153,7 +158,7 @@ export default function Experience() {
   if (step === "date") {
     const ok = Boolean(parsed);
     return (
-      <Shell bg="/img/cover.jpg" dim={0.74}>
+      <Shell bg="/img/c3-reading.jpg" dim={0.68}>
         <TopBar onBack={back} progress={stepIndex / 4} />
         <div className="flex flex-1 flex-col pt-10">
           <Ask
@@ -201,7 +206,7 @@ export default function Experience() {
   /* ================= 时辰（可跳） ================= */
   if (step === "hour") {
     return (
-      <Shell bg="/img/cover.jpg" dim={0.74}>
+      <Shell bg="/img/c2-coins.jpg" dim={0.72}>
         <TopBar onBack={back} progress={stepIndex / 4} />
         <div className="flex flex-1 flex-col pt-10">
           <Ask
@@ -248,7 +253,7 @@ export default function Experience() {
   /* ================= loading ================= */
   if (step === "loading") {
     return (
-      <Shell bg="/img/cover.jpg" dim={0.72}>
+      <Shell bg="/img/c2-coins.jpg" dim={0.66}>
         <div className="flex flex-1 flex-col items-center justify-center gap-8">
           <Spinner />
           <div className="flex flex-col items-center gap-2">
@@ -301,7 +306,7 @@ function CastStep({ onDone }: { onDone: () => void }) {
   const done = lines.length === 6;
 
   return (
-    <Shell bg="/img/jiaobei.jpg" dim={0.55}>
+    <Shell bg="/img/c2-coins.jpg" dim={0.58}>
       <div className="flex flex-1 flex-col">
         <div className="flex items-center justify-between pt-2">
           <span className="w-4" />
@@ -404,7 +409,7 @@ function CastStep({ onDone }: { onDone: () => void }) {
   const wxData = WUXING.map((el) => ({ el, v: result.counts[el] }));
 
   return (
-    <Shell bg="/img/portrait.jpg" dim={0.62}>
+    <Shell bg="/img/c4-gaze.jpg" dim={0.46}>
       <div className="flex flex-1 flex-col">
         <div className="flex items-center justify-between pt-2">
           <button type="button" onClick={() => setStep("cover")} className="press text-[18px] text-white/70">
