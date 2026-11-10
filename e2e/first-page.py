@@ -92,13 +92,22 @@ def main() -> int:
         y = box["y"] + min(420, box["height"] * 0.45)
         chain = hit_chain(page, x, y)
         page.mouse.click(x, y)
-        page.wait_for_timeout(250)
+        try:
+            page.wait_for_selector(f"text={SECOND}", timeout=2000)
+        except Exception as e:
+            record(
+                "2. 首屏中部鼠标点击：雨夜… → 下一句",
+                False,
+                f"click ({x:.0f},{y:.0f})\n命中链:\n{chain}\nurl={page.url}\n{e}",
+            )
+            browser.close()
+            return summarize()
         body = page.inner_text("body")
         ok2 = SECOND in body and FIRST not in body
         record(
             "2. 首屏中部鼠标点击：雨夜… → 下一句",
             ok2,
-            f"click ({x:.0f},{y:.0f})\n命中链:\n{chain}\n正文含第二句={SECOND in body} 仍含首句={FIRST in body}",
+            f"url={page.url}\nclick ({x:.0f},{y:.0f})\n命中链:\n{chain}\n正文含第二句={SECOND in body} 仍含首句={FIRST in body}",
         )
 
         # 3. 点「继续」提示所在的坐标，不要求这个元素自己接住事件
@@ -111,13 +120,22 @@ def main() -> int:
             cy = hb["y"] + hb["height"] / 2
             chain3 = hit_chain(page, cx, cy)
             page.mouse.click(cx, cy)
-            page.wait_for_timeout(250)
+            try:
+                page.wait_for_selector(f"text={THIRD}", timeout=2000)
+            except Exception as e:
+                record(
+                    "3. 点「继续」所在位置：再推进一句",
+                    False,
+                    f"click ({cx:.0f},{cy:.0f})\n命中链:\n{chain3}\nurl={page.url}\n{e}",
+                )
+                browser.close()
+                return summarize()
             body3 = page.inner_text("body")
             ok3 = THIRD in body3 and SECOND not in body3
             record(
                 "3. 点「继续」所在位置：再推进一句",
                 ok3,
-                f"click ({cx:.0f},{cy:.0f})\n命中链:\n{chain3}\n正文含第三句={THIRD in body3} 仍含第二句={SECOND in body3}",
+                f"url={page.url}\nclick ({cx:.0f},{cy:.0f})\n命中链:\n{chain3}\n正文含第三句={THIRD in body3} 仍含第二句={SECOND in body3}",
             )
 
         browser.close()

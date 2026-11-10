@@ -252,6 +252,11 @@ body::before {
   }
 }
 
+.scene-drift,
+.scene-drift * {
+  pointer-events: none;
+}
+
 .scene-drift {
   animation: scene-drift 7s linear forwards;
 }

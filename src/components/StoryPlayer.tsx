@@ -72,7 +72,11 @@ export default function StoryPlayer({
   }, [story]);
 
   const [boot] = useState<Loc | null>(() => readHistoryLoc(story.id));
-  const startAt = boot?.i ?? initialIndex;
+  // 地址上的 b 是这一拍。不读 history，避免和服务端画出的句子不一致。
+  const startAt = Math.min(
+    Math.max(0, flat.length - 1),
+    Math.max(0, initialIndex),
+  );
   const [phase, setPhase] = useState<Phase>(boot?.phase ?? "play");
   const [i, setI] = useState(startAt);
   const [teaserI, setTeaserI] = useState(boot?.teaser ?? 0);
@@ -130,18 +134,6 @@ export default function StoryPlayer({
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [apply, story.id]);
-
-  // 小脚本里点过的拍子没有历史记录。补上，返回才能一拍一拍退，而不是直接跳出剧本。
-  useEffect(() => {
-    if (startAt <= 0) return;
-    const st = history.state as { kanyu?: string; id?: string; loc?: Loc } | null;
-    if (st?.kanyu === "story" && st.id === story.id && st.loc?.i === startAt) return;
-    const base = { kanyu: "story", id: story.id };
-    history.replaceState({ ...base, loc: { phase: "play", i: 0, teaser: 0 } }, "");
-    for (let n = 1; n <= startAt; n++) {
-      history.pushState({ ...base, loc: { phase: "play", i: n, teaser: 0 } }, "");
-    }
-  }, [story.id, startAt]);
 
   const advance = useCallback(() => {
     if (locRef.current.phase !== "play") return;
@@ -238,19 +230,15 @@ export default function StoryPlayer({
 
   const canTapThrough = !beat.choices && !beat.input && beat.id !== "d4";
   const dwell = readPause(beat.who, cur?.chapterIndex ?? 0);
+  // 整屏就是下一拍的链接。不依赖脚本把点击接住，「继续」只是写在这层链接里的字。
+  const stageHref = canTapThrough ? `/play/${story.id}?b=${i + 1}` : undefined;
+  const Stage = stageHref ? "a" : "div";
 
   return (
-    <div
-      data-stage={canTapThrough ? "advance" : undefined}
-      className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black"
-      onPointerDown={(e) => {
-        if (!canTapThrough) return;
-        if (e.button === 1 || e.button === 2) return;
-        const t = e.target;
-        // 返回在门户里，不会冒到这里。输入控件仍留给自己。
-        if (t instanceof Element && t.closest("a, input, textarea, select")) return;
-        onStage();
-      }}
+    <Stage
+      href={stageHref}
+      data-stage={stageHref ? "advance" : undefined}
+      className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black text-inherit no-underline"
     >
       <BackBar />
       <VideoLayer beat={beat} beatId={beat.id} holdMs={beat.hold} paused={Boolean(beat.choices)} />
@@ -388,7 +376,7 @@ export default function StoryPlayer({
           )}
         </div>
       </div>
-    </div>
+    </Stage>
   );
 }
 
@@ -509,14 +497,15 @@ function VideoLayer({
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div key={beatId} className="scene-drift absolute inset-0">
+      <div key={beatId} className="scene-drift pointer-events-none absolute inset-0">
         {/* 静态图兜底，视频就绪后淡出。外层一直在缓慢推近，视频没起来画面也会动。 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={beat.art}
           alt=""
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+          style={{ pointerEvents: "none" }}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
             ready ? "opacity-0" : "opacity-100"
           }`}
         />
@@ -532,7 +521,8 @@ function VideoLayer({
             disablePictureInPicture
             controls={false}
             onCanPlay={() => setReady(true)}
-            className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+            style={{ pointerEvents: "none" }}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
               ready ? "opacity-100" : "opacity-0"
             }`}
           />
