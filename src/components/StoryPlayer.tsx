@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { buildFourPillars, elementCount, dayMasterStrength, WUXING } from "@/lib/ganzhi";
 import { castLine, guaOf, GUA_READING, GUA_READING_FALLBACK, TRIGRAM, type Line } from "@/lib/gua";
@@ -95,9 +102,9 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   const lastGo = useRef(0);
   const go = useCallback(
     (loc: Loc) => {
-      // 同一下点击若同时打中按钮和自动推进，只走一拍
-      const now = Date.now();
-      if (now - lastGo.current < 240) return;
+      // 同一次手指会先 pointerup 再 click，两下都进到这里。只挡这一下，不挡连点。
+      const now = performance.now();
+      if (now - lastGo.current < 32) return;
       lastGo.current = now;
       history.pushState({ kanyu: "story", id: story.id, loc }, "");
       apply(loc);
@@ -199,13 +206,7 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
       <VideoLayer beat={beat} beatId={beat.id} holdMs={beat.hold} paused={Boolean(beat.choices)} />
 
       {canTapThrough && (
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-hidden="true"
-          onClick={advance}
-          className="absolute inset-0 z-10"
-        />
+        <TapButton onTap={advance} hidden className="absolute inset-0 z-10" />
       )}
 
       {/* 压暗层 */}
@@ -266,10 +267,9 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
               {beat.choices.map((c, ci) => {
                 const on = pickedIdx === ci;
                 return (
-                  <button
+                  <TapButton
                     key={c.tag}
-                    type="button"
-                    onClick={() => {
+                    onTap={() => {
                       setAnswers((a) => ({ ...a, [beat.id]: { tag: c.tag, cost: c.cost } }));
                     }}
                     className={`press rounded-xl border px-4 py-3 text-left text-[13px] leading-6 backdrop-blur-md transition-colors ${
@@ -281,7 +281,7 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
                     }`}
                   >
                     {c.label}
-                  </button>
+                  </TapButton>
                 );
               })}
 
@@ -295,13 +295,12 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
                       {beat.choices[pickedIdx].cost}
                     </p>
                   )}
-                  <button
-                    type="button"
-                    onClick={advance}
+                  <TapButton
+                    onTap={advance}
                     className="press mt-1 w-full rounded-full bg-cinnabar-500 py-3.5 text-[14px] font-medium text-white shadow-[0_12px_40px_-10px_rgba(207,74,52,0.95)]"
                   >
                     继续
-                  </button>
+                  </TapButton>
                 </div>
               )}
             </div>
@@ -336,13 +335,12 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
               {beat.hold && lineReady ? (
                 <AutoAdvance hold={dwell} onDone={advance} />
               ) : null}
-              <button
-                type="button"
-                onClick={advance}
+              <TapButton
+                onTap={advance}
                 className="press w-full rounded-full border border-white/15 bg-white/[0.07] py-3 text-[13.5px] text-white backdrop-blur-md"
               >
                 {beat.who === "her" ? "……" : "继续"}
-              </button>
+              </TapButton>
             </div>
           )}
         </div>
@@ -358,9 +356,81 @@ function readPause(who: Beat["who"], chapterIndex: number) {
   return opening ? 1500 : 1050;
 }
 
+/**
+ * 用 pointerup 而不是 click。
+ * 手指按下后挪了几像素，浏览器会取消 click；这里抓住指针，挪动不超过 48px 仍算一次点按。
+ * 同一次手势随后到来的 click 在 50ms 内被丢掉，避免走两次。
+ */
+function useTap(run: () => void, slop = 48) {
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const last = useRef(0);
+  const runRef = useRef(run);
+  runRef.current = run;
+  const fire = () => {
+    const now = performance.now();
+    if (now - last.current < 50) return;
+    last.current = now;
+    runRef.current();
+  };
+  return {
+    onPointerDown: (e: PointerEvent<HTMLElement>) => {
+      if (e.button !== 0) return;
+      origin.current = { x: e.clientX, y: e.clientY };
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* 个别节点不支持 capture */
+      }
+    },
+    onPointerUp: (e: PointerEvent<HTMLElement>) => {
+      const o = origin.current;
+      origin.current = null;
+      if (!o) return;
+      if (Math.hypot(e.clientX - o.x, e.clientY - o.y) > slop) return;
+      fire();
+    },
+    onPointerCancel: () => {
+      origin.current = null;
+    },
+    onClick: () => {
+      // pointerup 已经触发过的话，这下 click 会落在 50ms 内被丢掉
+      fire();
+    },
+  };
+}
+
+function TapButton({
+  onTap,
+  className,
+  children,
+  label,
+  hidden,
+}: {
+  onTap: () => void;
+  className?: string;
+  children?: React.ReactNode;
+  label?: string;
+  hidden?: boolean;
+}) {
+  const tap = useTap(onTap);
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-hidden={hidden || undefined}
+      tabIndex={hidden ? -1 : undefined}
+      className={className}
+      {...tap}
+    >
+      {children}
+    </button>
+  );
+}
+
 function BackBar() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const tap = useTap(() => history.back());
   if (!mounted) return null;
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 top-0 z-[80] flex justify-center">
@@ -368,11 +438,22 @@ function BackBar() {
         <button
           type="button"
           aria-label="返回"
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            tap.onPointerDown(e);
+          }}
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            tap.onPointerUp(e);
+          }}
+          onPointerCancel={(e) => {
+            e.stopPropagation();
+            tap.onPointerCancel();
+          }}
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            history.back();
+            tap.onClick();
           }}
           className="press pointer-events-auto absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm"
         >
@@ -531,13 +612,9 @@ function AutoAdvance({ hold, onDone }: { hold: number; onDone: () => void }) {
 
   return (
     <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={onDone}
-        className="press shrink-0 text-[10px] tracking-widest text-white/40"
-      >
+      <TapButton onTap={onDone} className="press shrink-0 text-[10px] tracking-widest text-white/40">
         跳过
-      </button>
+      </TapButton>
       <div className="h-[2px] flex-1 overflow-hidden rounded-full bg-white/10">
         <div className="h-full rounded-full bg-cinnabar-400/70" style={{ width: `${p * 100}%` }} />
       </div>
@@ -596,9 +673,8 @@ function InputBlock({
           }`}
         />
       </div>
-      <button
-        type="button"
-        onClick={() => {
+      <TapButton
+        onTap={() => {
           if (!valid) {
             setWarn(true);
             return;
@@ -612,24 +688,22 @@ function InputBlock({
         }`}
       >
         说完了
-      </button>
+      </TapButton>
       {warn && !valid && (
         <p className="text-center text-[11px] text-cinnabar-300">
           {isName ? "先把名字写下，她才记得住" : "先选一个出生日期"}
         </p>
       )}
       {beat.input!.skip && (
-        <button
-          type="button"
-          onPointerDown={(e) => {
-            e.stopPropagation();
+        <TapButton
+          onTap={() => {
             setHour("");
             onNext();
           }}
           className="press py-2 text-[12px] text-white/45"
         >
           {beat.input!.skip}
-        </button>
+        </TapButton>
       )}
     </div>
   );

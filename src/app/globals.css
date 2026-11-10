@@ -243,13 +243,20 @@ body::before {
   animation: kenburns 1.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* 按钮按压反馈 */
+/* 按钮按压反馈。
+ * 不要用 transform 缩放按钮本身：按下时按钮变小，手指稍微一动，
+ * pointerup 就落在按钮外面，click 不会触发。表现为「有时候点了没反应」。
+ */
+html {
+  touch-action: manipulation;
+}
 .press {
+  touch-action: manipulation;
   transition:
-    transform 0.14s cubic-bezier(0.3, 1.4, 0.5, 1),
     background-color 0.18s ease,
-    border-color 0.18s ease;
+    border-color 0.18s ease,
+    filter 0.14s ease;
 }
 .press:active:not(:disabled) {
-  transform: scale(0.965);
+  filter: brightness(1.15);
 }
