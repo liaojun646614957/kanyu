@@ -75,6 +75,8 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   const [hour, setHour] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [lineReady, setLineReady] = useState(false);
+  // 点按把当前句一次显示完。前几拍是同一张图，若点一下又从光标重打，看起来像没反应。
+  const [forceFull, setForceFull] = useState(false);
 
   const locRef = useRef<Loc>({
     phase: boot?.phase ?? "play",
@@ -128,6 +130,23 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
     if (curI < flat.length - 1) go({ phase: "play", i: curI + 1, teaser: 0 });
     else go({ phase: "loadingFree", i: curI, teaser: 0 });
   }, [flat.length, go]);
+
+  const onAuto = useCallback(() => {
+    setForceFull(false);
+    advance();
+  }, [advance]);
+
+  const onStage = useCallback(() => {
+    if (!lineReady) {
+      setForceFull(true);
+      setLineReady(true);
+      return;
+    }
+    // 下一句直接给全文。apply 里会把 lineReady 清掉，这里再写回 true，同一次事件里以后者为准。
+    setForceFull(true);
+    advance();
+    setLineReady(true);
+  }, [advance, lineReady]);
 
   const settleToTeaser = useCallback(() => {
     go({ phase: "teaser", i: locRef.current.i, teaser: 0 });
@@ -210,9 +229,8 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
           className="absolute inset-0 z-40"
           style={{ transform: "translateZ(0)" }}
           onPointerDown={(e) => {
-            if (e.button !== 0) return;
-            // 按下就走，不等 pointerup。视频在手机上会把第一次抬手吃掉，等它播起来才点得动。
-            advance();
+            if (e.button > 0) return;
+            onStage();
           }}
         />
       )}
@@ -250,7 +268,7 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
 
       {/* 台词。可点穿的拍子上，字本身不接点击，点在句子上等于点在画面上 */}
       <div className={`relative z-20 mt-auto px-5 pb-8 ${canTapThrough ? "pointer-events-none" : ""}`}>
-        <div key={beat.id} className="flex flex-col gap-4">
+        <div key={beat.id} className="animate-fade flex flex-col gap-4">
           {beat.who === "her" && (
             <div className="flex items-center gap-2">
               <span className="h-px w-5 bg-cinnabar-400/70" />
@@ -266,6 +284,7 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
             narrator={beat.who === "narrator"}
             you={beat.who === "you"}
             lead={cur?.chapterIndex === 0 ? 160 : 70}
+            forceFull={forceFull}
             onTyped={() => setLineReady(true)}
           />
 
@@ -341,7 +360,7 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
           {!beat.choices && !beat.input && beat.id !== "d4" && (
             <div className="pointer-events-auto flex flex-col gap-2">
               {beat.hold && lineReady ? (
-                <AutoAdvance hold={dwell} onDone={advance} />
+                <AutoAdvance key={beat.id} hold={dwell} onDone={onAuto} />
               ) : null}
               <TapButton
                 onTap={advance}
@@ -514,12 +533,14 @@ function TypeLine({
   narrator,
   you,
   lead,
+  forceFull,
   onTyped,
 }: {
   text: string;
   narrator: boolean;
   you: boolean;
   lead: number;
+  forceFull: boolean;
   onTyped: () => void;
 }) {
   const [n, setN] = useState(0);
@@ -532,17 +553,17 @@ function TypeLine({
   // 用 effect 推进，而不是在 setState 里预约下一次。
   // 开发模式会把 setState 回调跑两遍，副作用写在里面会让打字变成双倍速。
   useEffect(() => {
-    if (n >= len) return;
+    if (forceFull || n >= len) return;
     const id = window.setTimeout(() => setN(n + 1), n === 0 ? lead : delay);
     return () => window.clearTimeout(id);
-  }, [n, len, lead, delay]);
+  }, [n, len, lead, delay, forceFull]);
 
   useEffect(() => {
-    if (len > 0 && n >= len) onTypedRef.current();
-  }, [n, len]);
+    if (forceFull || (len > 0 && n >= len)) onTypedRef.current();
+  }, [forceFull, n, len]);
 
-  const shown = chars.slice(0, n).join("");
-  const done = n >= chars.length;
+  const shown = forceFull ? text : chars.slice(0, n).join("");
+  const done = forceFull || n >= chars.length;
 
   if (narrator) {
     return (
