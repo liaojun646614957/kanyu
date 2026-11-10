@@ -6,7 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent,
+  type MouseEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { buildFourPillars, elementCount, dayMasterStrength, WUXING } from "@/lib/ganzhi";
@@ -206,7 +206,15 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
       <VideoLayer beat={beat} beatId={beat.id} holdMs={beat.hold} paused={Boolean(beat.choices)} />
 
       {canTapThrough && (
-        <TapButton onTap={advance} hidden className="absolute inset-0 z-10" />
+        <div
+          className="absolute inset-0 z-40"
+          style={{ transform: "translateZ(0)" }}
+          onPointerDown={(e) => {
+            if (e.button !== 0) return;
+            // 按下就走，不等 pointerup。视频在手机上会把第一次抬手吃掉，等它播起来才点得动。
+            advance();
+          }}
+        />
       )}
 
       {/* 压暗层 */}
@@ -361,40 +369,17 @@ function readPause(who: Beat["who"], chapterIndex: number) {
  * 手指按下后挪了几像素，浏览器会取消 click；这里抓住指针，挪动不超过 48px 仍算一次点按。
  * 同一次手势随后到来的 click 在 50ms 内被丢掉，避免走两次。
  */
-function useTap(run: () => void, slop = 48) {
-  const origin = useRef<{ x: number; y: number } | null>(null);
+function useTap(run: () => void) {
   const last = useRef(0);
   const runRef = useRef(run);
   runRef.current = run;
-  const fire = () => {
-    const now = performance.now();
-    if (now - last.current < 50) return;
-    last.current = now;
-    runRef.current();
-  };
   return {
-    onPointerDown: (e: PointerEvent<HTMLElement>) => {
-      if (e.button !== 0) return;
-      origin.current = { x: e.clientX, y: e.clientY };
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } catch {
-        /* 个别节点不支持 capture */
-      }
-    },
-    onPointerUp: (e: PointerEvent<HTMLElement>) => {
-      const o = origin.current;
-      origin.current = null;
-      if (!o) return;
-      if (Math.hypot(e.clientX - o.x, e.clientY - o.y) > slop) return;
-      fire();
-    },
-    onPointerCancel: () => {
-      origin.current = null;
-    },
-    onClick: () => {
-      // pointerup 已经触发过的话，这下 click 会落在 50ms 内被丢掉
-      fire();
+    onClick: (e: MouseEvent<HTMLElement>) => {
+      e.stopPropagation();
+      const now = performance.now();
+      if (now - last.current < 40) return;
+      last.current = now;
+      runRef.current();
     },
   };
 }
@@ -438,24 +423,12 @@ function BackBar() {
         <button
           type="button"
           aria-label="返回"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            tap.onPointerDown(e);
-          }}
-          onPointerUp={(e) => {
-            e.stopPropagation();
-            tap.onPointerUp(e);
-          }}
-          onPointerCancel={(e) => {
-            e.stopPropagation();
-            tap.onPointerCancel();
-          }}
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            e.preventDefault();
-            tap.onClick();
+            tap.onClick(e);
           }}
-          className="press pointer-events-auto absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm"
+          className="press pointer-events-auto absolute left-3 top-3 z-[80] flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
@@ -507,7 +480,7 @@ function VideoLayer({
         src={beat.art}
         alt=""
         aria-hidden="true"
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+        className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
           ready ? "opacity-0" : "opacity-100"
         }`}
       />
@@ -520,8 +493,10 @@ function VideoLayer({
           autoPlay
           loop={paused || Boolean(holdMs)}
           preload="auto"
+          disablePictureInPicture
+          controls={false}
           onCanPlay={() => setReady(true)}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+          className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
             ready ? "opacity-100" : "opacity-0"
           }`}
         />
