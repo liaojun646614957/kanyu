@@ -169,8 +169,7 @@ def main() -> int:
             page.wait_for_function(
                 """() => {
                   const v = document.querySelector('video');
-                  const img = document.querySelector('img');
-                  if (!v || !img) return false;
+                  if (!v) return false;
                   const vs = getComputedStyle(v);
                   return location.href.includes('b=1')
                     && (v.currentSrc || '').endsWith('02-bell.mp4')
@@ -184,13 +183,12 @@ def main() -> int:
             seen = page.evaluate(
                 """() => {
                   const v = document.querySelector('video');
-                  const img = document.querySelector('img');
                   return {
                     src: (v.currentSrc || '').split('/').pop(),
                     paused: v.paused,
                     t: Math.round(v.currentTime * 100) / 100,
                     vOp: getComputedStyle(v).opacity,
-                    iOp: getComputedStyle(img).opacity,
+                    poster: (v.poster || '').split('/').pop(),
                   };
                 }"""
             )

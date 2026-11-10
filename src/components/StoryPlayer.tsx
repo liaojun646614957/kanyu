@@ -289,11 +289,17 @@ export default function StoryPlayer({
               e.preventDefault();
               e.stopPropagation();
               // 句子还没出完时，这一下只补全文，不能把下一段视频提前换上来。
+              const el = videoRef.current;
+              // 手机经常不许自动播。这一下先把当前这段门或铃播起来，画面还停着就先不翻页。
+              if (el && beat.video && el.paused && el.currentTime < 0.05) {
+                primeVideo(el, beat.video);
+                return;
+              }
               const advancing = lineReady || forceFull;
               const target = advancing
                 ? flat[locRef.current.i + 1]?.beat?.video
                 : beat.video;
-              primeVideo(videoRef.current, target);
+              primeVideo(el, target);
               onStage();
             }
           : undefined
@@ -558,61 +564,56 @@ function VideoLayer({
   paused: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
 }) {
-  const [ready, setReady] = useState(false);
-
   useEffect(() => {
     const el = videoRef.current;
     if (!el || !beat.video) return;
-    // src 不写在 JSX 上。写上的话，换拍时 React 会把元素重新加载，手机上刚才那一下 play 就失效了。
-    // 点击里已经换好源并播起来时，这里不能再赋值。
+    // 地址已经写在标签上，第一眼就是这段门或铃，不再用人物静图盖住。
+    // 点击里已经播起来时，这里不要再改地址。
     if (!el.src.endsWith(beat.video)) el.src = beat.video;
     el.loop = paused || Boolean(holdMs);
     if (el.paused) {
       const pending = el.play();
       if (pending) pending.catch(() => {});
     }
-    const show = () => {
-      if (el.readyState >= 2) setReady(true);
-    };
-    show();
-    el.addEventListener("loadeddata", show);
-    el.addEventListener("playing", show);
-    return () => {
-      el.removeEventListener("loadeddata", show);
-      el.removeEventListener("playing", show);
-    };
   }, [beat.video, beatId, holdMs, paused, videoRef]);
+
+  const poster = beat.video ? posterFor(beat.video) : undefined;
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div key={beatId} className="scene-drift pointer-events-none absolute inset-0" style={{ zIndex: 0 }}>
-        {/* 静图只在视频还没画出画面时兜底。门和铃的静图是同一张脸，盖住视频就会看起来一直停在第一张。 */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={beat.art}
-          alt=""
-          aria-hidden="true"
-          style={{ pointerEvents: "none", opacity: ready ? 0 : 1 }}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      </div>
-      {beat.video && (
+      {beat.video ? (
         <video
           ref={videoRef}
+          src={beat.video}
+          poster={poster}
           muted
           playsInline
           autoPlay
           preload="auto"
           disablePictureInPicture
           controls={false}
-          onLoadedData={() => setReady(true)}
-          onPlaying={() => setReady(true)}
-          style={{ pointerEvents: "none", zIndex: 2, opacity: 1, transform: "translateZ(0)" }}
-          className="absolute inset-0 h-full w-full object-cover"
+          style={{ pointerEvents: "none", opacity: 1 }}
+          className="absolute inset-0 z-[2] h-full w-full object-cover"
         />
+      ) : (
+        <div key={beatId} className="scene-drift pointer-events-none absolute inset-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={beat.art}
+            alt=""
+            aria-hidden="true"
+            style={{ pointerEvents: "none" }}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
       )}
     </div>
   );
+}
+
+function posterFor(src: string) {
+  const name = src.split("/").pop()?.replace(/\.mp4$/, "");
+  return name ? `/img/posters/${name}.jpg` : undefined;
 }
 
 /* ------------------------------------------------------------------ *
