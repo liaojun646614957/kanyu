@@ -241,12 +241,14 @@ export default function StoryPlayer({
 
   return (
     <div
+      data-stage={canTapThrough ? "advance" : undefined}
       className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black"
       onPointerDown={(e) => {
         if (!canTapThrough) return;
         if (e.button === 1 || e.button === 2) return;
         const t = e.target;
-        if (t instanceof Element && t.closest("button, a, input, textarea, select")) return;
+        // 返回在门户里，不会冒到这里。输入控件仍留给自己。
+        if (t instanceof Element && t.closest("a, input, textarea, select")) return;
         onStage();
       }}
     >
@@ -371,21 +373,17 @@ export default function StoryPlayer({
 
           {/* 普通推进：自动走 + 也永远给一个按钮，避免任何情况下卡住 */}
           {!beat.choices && !beat.input && beat.id !== "d4" && (
-            <div className="pointer-events-auto flex flex-col gap-2">
+            <div className="pointer-events-none flex flex-col gap-2">
               {beat.hold && lineReady ? (
                 <AutoAdvance key={beat.id} hold={dwell} onDone={onAuto} />
               ) : null}
-              <button
-                type="button"
-                className="press w-full cursor-pointer rounded-full border border-white/15 bg-white/[0.07] py-3 text-[13.5px] text-white backdrop-blur-md"
-                onPointerDown={(e) => {
-                  if (e.button === 1 || e.button === 2) return;
-                  e.stopPropagation();
-                  onStage();
-                }}
+              {/* 只是提示。点击由整屏 data-stage 接住，不依赖这个元素的命中区。 */}
+              <div
+                data-continue=""
+                className="pointer-events-none w-full rounded-full border border-white/15 bg-white/[0.07] py-3 text-center text-[13.5px] text-white backdrop-blur-md"
               >
                 {beat.who === "her" ? "……" : "继续"}
-              </button>
+              </div>
             </div>
           )}
         </div>
@@ -627,10 +625,8 @@ function AutoAdvance({ hold, onDone }: { hold: number; onDone: () => void }) {
   }, [hold, onDone]);
 
   return (
-    <div className="flex items-center gap-2">
-      <TapButton onTap={onDone} className="press shrink-0 text-[10px] tracking-widest text-white/40">
-        跳过
-      </TapButton>
+    <div className="pointer-events-none flex items-center gap-2">
+      <span className="shrink-0 text-[10px] tracking-widest text-white/40">跳过</span>
       <div className="h-[2px] flex-1 overflow-hidden rounded-full bg-white/10">
         <div className="h-full rounded-full bg-cinnabar-400/70" style={{ width: `${p * 100}%` }} />
       </div>
