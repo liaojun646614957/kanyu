@@ -55,7 +55,13 @@ function readHistoryLoc(storyId: string): Loc | null {
   return null;
 }
 
-export default function StoryPlayer({ story }: { story: StoryScript }) {
+export default function StoryPlayer({
+  story,
+  initialIndex = 0,
+}: {
+  story: StoryScript;
+  initialIndex?: number;
+}) {
   // 把 chapters 摊平成线性 beats，并记住每个 beat 属于哪一章
   const flat = useMemo(() => {
     const out: { beat: Beat; chapterTitle: string; chapterIndex: number }[] = [];
@@ -66,8 +72,9 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   }, [story]);
 
   const [boot] = useState<Loc | null>(() => readHistoryLoc(story.id));
+  const startAt = boot?.i ?? initialIndex;
   const [phase, setPhase] = useState<Phase>(boot?.phase ?? "play");
-  const [i, setI] = useState(boot?.i ?? 0);
+  const [i, setI] = useState(startAt);
   const [teaserI, setTeaserI] = useState(boot?.teaser ?? 0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [name, setName] = useState("");
@@ -76,11 +83,11 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
   const [lines, setLines] = useState<Line[]>([]);
   const [lineReady, setLineReady] = useState(false);
   // 点按把当前句一次显示完。前几拍是同一张图，若点一下又从光标重打，看起来像没反应。
-  const [forceFull, setForceFull] = useState(false);
+  const [forceFull, setForceFull] = useState(true);
 
   const locRef = useRef<Loc>({
     phase: boot?.phase ?? "play",
-    i: boot?.i ?? 0,
+    i: startAt,
     teaser: boot?.teaser ?? 0,
   });
 
@@ -123,6 +130,18 @@ export default function StoryPlayer({ story }: { story: StoryScript }) {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [apply, story.id]);
+
+  // 小脚本里点过的拍子没有历史记录。补上，返回才能一拍一拍退，而不是直接跳出剧本。
+  useEffect(() => {
+    if (startAt <= 0) return;
+    const st = history.state as { kanyu?: string; id?: string; loc?: Loc } | null;
+    if (st?.kanyu === "story" && st.id === story.id && st.loc?.i === startAt) return;
+    const base = { kanyu: "story", id: story.id };
+    history.replaceState({ ...base, loc: { phase: "play", i: 0, teaser: 0 } }, "");
+    for (let n = 1; n <= startAt; n++) {
+      history.pushState({ ...base, loc: { phase: "play", i: n, teaser: 0 } }, "");
+    }
+  }, [story.id, startAt]);
 
   const advance = useCallback(() => {
     if (locRef.current.phase !== "play") return;
