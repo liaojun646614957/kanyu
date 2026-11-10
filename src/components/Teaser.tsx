@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { TEASER, type Beat } from "@/lib/teaser";
 
 /**
@@ -16,37 +16,27 @@ import { TEASER, type Beat } from "@/lib/teaser";
  *   - center ：居中大字（停顿/重击）
  *   - bottom ：底部压黑条
  */
-export default function Teaser({ onDone }: { onDone: () => void }) {
-  const [i, setI] = useState(0);
+export default function Teaser({ index, onNext }: { index: number; onNext: () => void }) {
   const [revealed, setRevealed] = useState(false);
 
-  const beat = TEASER[i];
-  const last = i === TEASER.length - 1;
-
-  const next = () => {
-    if (last) {
-      onDone();
-    } else {
-      setI((x) => x + 1);
-      setRevealed(false);
-    }
-  };
+  const beat = TEASER[index];
+  const last = index === TEASER.length - 1;
 
   useEffect(() => {
     // 每页进入后 300ms 再显示文字，制造"她在说"的节奏
     const t = window.setTimeout(() => setRevealed(true), 280);
     return () => window.clearTimeout(t);
-  }, [i]);
+  }, [index]);
 
   return (
     <div
       className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black"
-      onClick={next}
+      onClick={onNext}
     >
       {/* 立绘：kenburns 缓慢推近 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        key={beat.art + i}
+        key={beat.art + index}
         src={beat.art}
         alt=""
         aria-hidden="true"
@@ -67,12 +57,12 @@ export default function Teaser({ onDone }: { onDone: () => void }) {
       />
 
       {/* 进度：极细分段 */}
-      <div className="relative z-20 flex gap-1 px-4 pt-4">
+      <div className="relative z-20 flex gap-1 pl-16 pr-4 pt-7">
         {TEASER.map((_, k) => (
           <div
             key={k}
             className={`h-[2px] flex-1 rounded-full transition-colors duration-300 ${
-              k <= i ? "bg-cinnabar-400/80" : "bg-white/12"
+              k <= index ? "bg-cinnabar-400/80" : "bg-white/12"
             }`}
           />
         ))}

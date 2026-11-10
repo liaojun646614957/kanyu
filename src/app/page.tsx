@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import StoryPlayer from "@/components/StoryPlayer";
 import { STORIES } from "@/lib/story";
 
@@ -90,23 +90,26 @@ const SLOTS: Slot[] = [
   },
 ];
 
+function openStory(id: string) {
+  // 压一条历史，浏览器后退和页内返回走的是同一条栈
+  history.pushState({ kanyu: "story", id, loc: { phase: "play", i: 0, teaser: 0 } }, "");
+}
+
 export default function Page() {
   const [playing, setPlaying] = useState<string | null>(null);
 
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const st = e.state as { kanyu?: string; id?: string } | null;
+      if (st?.kanyu === "story" && st.id && STORIES[st.id]) setPlaying(st.id);
+      else setPlaying(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   if (playing && STORIES[playing]) {
-    return (
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setPlaying(null)}
-          className="press fixed left-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-[14px] text-white/70 backdrop-blur-md"
-          aria-label="退出剧本"
-        >
-          ✕
-        </button>
-        <StoryPlayer key={playing} story={STORIES[playing]} />
-      </div>
-    );
+    return <StoryPlayer key={playing} story={STORIES[playing]} />;
   }
 
   const featured = SLOTS[0];
@@ -126,10 +129,21 @@ export default function Page() {
 
       {/* 今日开场 */}
       <section className="mt-6 px-5">
-        <button
-          type="button"
-          onClick={() => setPlaying(featured.id)}
-          className="press group relative block w-full overflow-hidden rounded-2xl text-left"
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            openStory(featured.id);
+            setPlaying(featured.id);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openStory(featured.id);
+              setPlaying(featured.id);
+            }
+          }}
+          className="press group relative block w-full cursor-pointer overflow-hidden rounded-2xl text-left"
           style={{ aspectRatio: "3 / 4" }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -159,7 +173,7 @@ export default function Page() {
               <span className="text-[10px] text-white/45">{featured.acts}</span>
             </div>
           </div>
-        </button>
+        </div>
       </section>
 
       {/* 其他剧目 */}
@@ -171,12 +185,27 @@ export default function Page() {
 
         <div className="flex flex-col gap-2.5">
           {rest.map((s) => (
-            <button
+            <div
               key={s.id}
-              type="button"
-              disabled={!s.ready}
-              onClick={() => s.ready && setPlaying(s.id)}
-              className="press relative flex items-stretch gap-3.5 overflow-hidden rounded-xl border border-ink-800 bg-ink-900/50 p-2.5 text-left disabled:cursor-default"
+              role="button"
+              tabIndex={s.ready ? 0 : -1}
+              aria-disabled={!s.ready}
+              onClick={() => {
+                if (!s.ready) return;
+                openStory(s.id);
+                setPlaying(s.id);
+              }}
+              onKeyDown={(e) => {
+                if (!s.ready) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openStory(s.id);
+                  setPlaying(s.id);
+                }
+              }}
+              className={`relative flex items-stretch gap-3.5 overflow-hidden rounded-xl border border-ink-800 bg-ink-900/50 p-2.5 text-left ${
+                s.ready ? "press cursor-pointer" : "cursor-default"
+              }`}
             >
               <div className="relative h-[86px] w-[66px] shrink-0 overflow-hidden rounded-lg">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -203,7 +232,7 @@ export default function Page() {
                 <span className="line-clamp-2 text-[10.5px] leading-4 text-ink-500">{s.logline}</span>
                 <span className="mt-0.5 text-[9px] tracking-[0.14em] text-ink-600">{s.master}</span>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </section>

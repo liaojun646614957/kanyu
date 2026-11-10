@@ -138,7 +138,7 @@ export default function StoryHero({ name, video, poster, onSettled, loadingOnly 
 
         {/* 顶部进度条 */}
         <div
-          className="absolute left-4 right-4 top-4 z-20 h-1"
+          className="absolute left-16 right-4 top-7 z-20 h-1"
           style={{ background: "rgba(250,250,250,0.20)" }}
         >
           <div
