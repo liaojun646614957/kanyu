@@ -240,20 +240,18 @@ export default function StoryPlayer({
   const dwell = readPause(beat.who, cur?.chapterIndex ?? 0);
 
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black">
+    <div
+      className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black"
+      onPointerDown={(e) => {
+        if (!canTapThrough) return;
+        if (e.button === 1 || e.button === 2) return;
+        const t = e.target;
+        if (t instanceof Element && t.closest("button, a, input, textarea, select")) return;
+        onStage();
+      }}
+    >
       <BackBar />
       <VideoLayer beat={beat} beatId={beat.id} holdMs={beat.hold} paused={Boolean(beat.choices)} />
-
-      {canTapThrough && (
-        <div
-          className="absolute inset-0 z-30"
-          style={{ transform: "translateZ(0)" }}
-          onPointerDown={(e) => {
-            if (e.button > 0) return;
-            onStage();
-          }}
-        />
-      )}
 
       {/* 压暗层 */}
       <div
@@ -377,12 +375,17 @@ export default function StoryPlayer({
               {beat.hold && lineReady ? (
                 <AutoAdvance key={beat.id} hold={dwell} onDone={onAuto} />
               ) : null}
-              <TapButton
-                onTap={onStage}
-                className="press w-full rounded-full border border-white/15 bg-white/[0.07] py-3 text-[13.5px] text-white backdrop-blur-md"
+              <button
+                type="button"
+                className="press w-full cursor-pointer rounded-full border border-white/15 bg-white/[0.07] py-3 text-[13.5px] text-white backdrop-blur-md"
+                onPointerDown={(e) => {
+                  if (e.button === 1 || e.button === 2) return;
+                  e.stopPropagation();
+                  onStage();
+                }}
               >
                 {beat.who === "her" ? "……" : "继续"}
-              </TapButton>
+              </button>
             </div>
           )}
         </div>
