@@ -275,6 +275,7 @@ body::before {
   animation-name: beat-fill;
   animation-timing-function: linear;
   animation-fill-mode: forwards;
+  pointer-events: none;
 }
 
 /* 按钮按压反馈。

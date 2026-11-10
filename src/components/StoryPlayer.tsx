@@ -85,6 +85,8 @@ export default function StoryPlayer({
   const [birth, setBirth] = useState("1995-03-15");
   const [hour, setHour] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
+  const storageKey = `kanyu:${story.id}`;
+  const skipSave = useRef(true);
   // 第一句已经全文在屏幕上，点「继续」就是下一拍，不要再空点一次。
   const [lineReady, setLineReady] = useState(true);
   const [forceFull, setForceFull] = useState(true);
@@ -94,6 +96,35 @@ export default function StoryPlayer({
     i: startAt,
     teaser: boot?.teaser ?? 0,
   });
+
+  // ?b= 会整页打开。名字和选项记在 sessionStorage，下一拍还在。
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (raw) {
+        const saved = JSON.parse(raw) as {
+          name?: string;
+          answers?: Record<string, Answer>;
+          birth?: string;
+          hour?: string;
+        };
+        if (saved.name) setName(saved.name);
+        if (saved.answers) setAnswers(saved.answers);
+        if (saved.birth) setBirth(saved.birth);
+        if (typeof saved.hour === "string") setHour(saved.hour);
+      }
+    } catch {
+      /* 坏数据就当没有 */
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (skipSave.current) {
+      skipSave.current = false;
+      return;
+    }
+    sessionStorage.setItem(storageKey, JSON.stringify({ name, answers, birth, hour }));
+  }, [storageKey, name, answers, birth, hour]);
 
   const tags = useMemo(
     () => flat.flatMap((f) => (answers[f.beat.id] ? [answers[f.beat.id].tag] : [])),
@@ -263,7 +294,7 @@ export default function StoryPlayer({
         </div>
       ) : null}
 
-      <div className="relative z-20 px-5 pt-14">
+      <div className="pointer-events-none relative z-20 px-5 pt-14">
         <p className="font-serif text-[9.5px] tracking-[0.22em] text-white/35">
           {cur?.chapterTitle}
         </p>
