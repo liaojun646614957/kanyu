@@ -15,6 +15,7 @@ import { castLine, guaOf, GUA_READING, GUA_READING_FALLBACK, TRIGRAM, type Line 
 import { PERSONA, PERSONA_FALLBACK } from "@/lib/persona";
 import { downloadPoster } from "@/lib/poster";
 import type { Beat, StoryScript } from "@/lib/story";
+import { InputStep, Onboarding, PaidLoading } from "@/components/FlowScreens";
 import StoryBook from "@/components/StoryBook";
 import StoryHero from "@/components/StoryHero";
 import Teaser from "@/components/Teaser";
@@ -43,7 +44,7 @@ type Collected = {
   costs: string[];
 };
 
-type Phase = "play" | "loadingFree" | "teaser" | "transition" | "ending";
+type Phase = "onboarding" | "play" | "input" | "loadingFree" | "teaser" | "loadingPaid" | "ending";
 
 type Loc = { phase: Phase; i: number; teaser: number };
 
@@ -69,7 +70,10 @@ export default function StoryPlayer({
   const flat = useMemo(() => {
     const out: { beat: Beat; chapterTitle: string; chapterIndex: number }[] = [];
     story.chapters.forEach((ch, ci) => {
-      ch.beats.forEach((b) => out.push({ beat: b, chapterTitle: ch.title, chapterIndex: ci }));
+      ch.beats.forEach((b) => {
+        if (b.form) return;
+        out.push({ beat: b, chapterTitle: ch.title, chapterIndex: ci });
+      });
     });
     return out;
   }, [story]);
@@ -87,6 +91,7 @@ export default function StoryPlayer({
   const [name, setName] = useState("");
   const [birth, setBirth] = useState("1995-03-15");
   const [hour, setHour] = useState("");
+  const [lunar, setLunar] = useState(false);
   const [lines, setLines] = useState<Line[]>([]);
   const storageKey = `kanyu:${story.id}`;
   const skipSave = useRef(true);
@@ -111,11 +116,13 @@ export default function StoryPlayer({
           answers?: Record<string, Answer>;
           birth?: string;
           hour?: string;
+          lunar?: boolean;
         };
         if (saved.name) setName(saved.name);
         if (saved.answers) setAnswers(saved.answers);
         if (saved.birth) setBirth(saved.birth);
         if (typeof saved.hour === "string") setHour(saved.hour);
+        if (typeof saved.lunar === "boolean") setLunar(saved.lunar);
       }
     } catch {
       /* 坏数据就当没有 */
@@ -127,8 +134,8 @@ export default function StoryPlayer({
       skipSave.current = false;
       return;
     }
-    sessionStorage.setItem(storageKey, JSON.stringify({ name, answers, birth, hour }));
-  }, [storageKey, name, answers, birth, hour]);
+    sessionStorage.setItem(storageKey, JSON.stringify({ name, answers, birth, hour, lunar }));
+  }, [storageKey, name, answers, birth, hour, lunar]);
 
   const tags = useMemo(
     () => flat.flatMap((f) => (answers[f.beat.id] ? [answers[f.beat.id].tag] : [])),
@@ -154,10 +161,22 @@ export default function StoryPlayer({
       const now = performance.now();
       if (now - lastGo.current < 32) return;
       lastGo.current = now;
-      const url =
-        loc.phase === "loadingFree"
-          ? `/play/${story.id}?phase=loading`
-          : `/play/${story.id}?b=${loc.i}`;
+      const step =
+        loc.phase === "onboarding"
+          ? "onboarding"
+          : loc.phase === "play"
+            ? "story"
+            : loc.phase === "input"
+              ? "input"
+              : loc.phase === "loadingFree"
+                ? "loading:free"
+                : loc.phase === "teaser"
+                  ? "teaser"
+                  : loc.phase === "loadingPaid"
+                    ? "loading:paid"
+                    : "result";
+      const beat = loc.phase === "play" ? `&b=${loc.i}` : "";
+      const url = `/play/${story.id}?step=${encodeURIComponent(step)}${beat}`;
       // 走原型上的 pushState，避免 Next 把这次点击当成整页跳转。整页打开后，手机不会接着播下一段视频。
       History.prototype.pushState.call(window.history, { kanyu: "story", id: story.id, loc }, "", url);
       apply(loc);
@@ -179,7 +198,7 @@ export default function StoryPlayer({
     if (locRef.current.phase !== "play") return;
     const curI = locRef.current.i;
     if (curI < flat.length - 1) go({ phase: "play", i: curI + 1, teaser: 0 });
-    else go({ phase: "loadingFree", i: curI, teaser: 0 });
+    else go({ phase: "input", i: curI, teaser: 0 });
   }, [flat.length, go]);
 
   const onAuto = useCallback(() => {
@@ -239,20 +258,50 @@ export default function StoryPlayer({
           index={teaserI}
           onNext={() => {
             if (teaserI < TEASER_LEN - 1) go({ phase: "teaser", i, teaser: teaserI + 1 });
-            else go({ phase: "transition", i, teaser: teaserI });
+            else go({ phase: "loadingPaid", i, teaser: teaserI });
           }}
         />
       </>
     );
   }
 
-  if (phase === "transition") {
+  if (phase === "loadingPaid") {
     return (
       <>
         <BackBar />
-        <div className="mx-auto w-full max-w-[440px] bg-[#0b0809]">
-          <Ending story={story} data={{ name, birth, hour, tags, lines, costs }} inline />
-        </div>
+        <PaidLoading onDone={() => go({ phase: "ending", i: locRef.current.i, teaser: 0 })} />
+      </>
+    );
+  }
+
+  if (phase === "onboarding") {
+    return (
+      <>
+        <BackBar />
+        <Onboarding onEnter={() => go({ phase: "play", i: 0, teaser: 0 })} />
+      </>
+    );
+  }
+
+  if (phase === "input") {
+    const genderTag = answers.c5b?.tag;
+    const gender = genderTag === "male" || genderTag === "female" ? genderTag : "";
+    return (
+      <>
+        <BackBar />
+        <InputStep
+          name={name}
+          birth={birth}
+          hour={hour}
+          gender={gender}
+          lunar={lunar}
+          onName={setName}
+          onBirth={setBirth}
+          onHour={setHour}
+          onLunar={setLunar}
+          onGender={(g) => setAnswers((a) => ({ ...a, c5b: { tag: g } }))}
+          onDone={() => go({ phase: "loadingFree", i: locRef.current.i, teaser: 0 })}
+        />
       </>
     );
   }
@@ -273,8 +322,8 @@ export default function StoryPlayer({
   // 整屏就是下一拍的链接。不依赖脚本把点击接住，「继续」只是写在这层链接里的字。
   const stageHref = canTapThrough
     ? i + 1 < flat.length
-      ? `/play/${story.id}?b=${i + 1}`
-      : `/play/${story.id}?phase=loading`
+      ? `/play/${story.id}?step=story&b=${i + 1}`
+      : `/play/${story.id}?step=input`
     : undefined;
   const Stage = stageHref ? "a" : "div";
 
@@ -282,6 +331,7 @@ export default function StoryPlayer({
     <Stage
       href={stageHref}
       data-stage={stageHref ? "advance" : undefined}
+      data-step="story"
       className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black text-inherit no-underline"
       onClick={
         stageHref
@@ -326,7 +376,7 @@ export default function StoryPlayer({
       {/* 台词。可点穿的拍子上，字本身不接点击，点在句子上等于点在画面上 */}
       <div className={`relative z-50 mt-auto px-5 pb-8 ${canTapThrough ? "pointer-events-none" : ""}`}>
         <div key={beat.id} className="animate-fade flex flex-col gap-4">
-          {beat.who === "her" && (
+          {!canTapThrough && beat.who === "her" && (
             <div className="flex items-center gap-2">
               <span className="h-px w-5 bg-cinnabar-400/70" />
               <span className="font-serif text-[10px] tracking-[0.24em] text-cinnabar-300">
@@ -335,15 +385,17 @@ export default function StoryPlayer({
             </div>
           )}
 
-          <TypeLine
-            key={`${beat.id}-text`}
-            text={beat.text}
-            narrator={beat.who === "narrator"}
-            you={beat.who === "you"}
-            lead={cur?.chapterIndex === 0 ? 160 : 70}
-            forceFull={forceFull}
-            onTyped={() => setLineReady(true)}
-          />
+          {!canTapThrough && (
+            <TypeLine
+              key={`${beat.id}-text`}
+              text={beat.text}
+              narrator={beat.who === "narrator"}
+              you={beat.who === "you"}
+              lead={cur?.chapterIndex === 0 ? 160 : 70}
+              forceFull={forceFull}
+              onTyped={() => setLineReady(true)}
+            />
+          )}
 
           {/* 选择 */}
           {beat.choices && (
@@ -356,7 +408,7 @@ export default function StoryPlayer({
                     onTap={() => {
                       setAnswers((a) => ({ ...a, [beat.id]: { tag: c.tag, cost: c.cost } }));
                     }}
-                    className={`press rounded-xl border px-4 py-3 text-left text-[13px] leading-6 backdrop-blur-md transition-colors ${
+                    className={`press rounded-full border px-4 py-3 text-center text-[13px] leading-6 backdrop-blur-md transition-colors ${
                       on
                         ? "border-cinnabar-400/70 bg-cinnabar-500/25 text-white"
                         : pickedIdx !== null
@@ -390,6 +442,17 @@ export default function StoryPlayer({
             </div>
           )}
 
+          {beat.choices && (
+            <button
+              type="button"
+              data-skip=""
+              className="text-[12px] tracking-[0.14em] text-white/65"
+              onClick={() => go({ phase: "input", i: locRef.current.i, teaser: 0 })}
+            >
+              略过故事
+            </button>
+          )}
+
           {/* 输入 */}
           {beat.input && (
             <InputBlock
@@ -415,17 +478,36 @@ export default function StoryPlayer({
 
           {/* 普通推进：自动走 + 也永远给一个按钮，避免任何情况下卡住 */}
           {!beat.choices && !beat.input && beat.id !== "d4" && (
-            <div className="pointer-events-none flex flex-col gap-2">
+            <div className="pointer-events-none flex flex-col items-center gap-3">
               {beat.hold && lineReady ? (
                 <AutoAdvance key={beat.id} hold={dwell} onDone={onAuto} />
               ) : null}
-              {/* 只是提示。点击由整屏 data-stage 接住，不依赖这个元素的命中区。 */}
               <div
                 data-continue=""
-                className="pointer-events-none w-full rounded-full border border-white/15 bg-white/[0.07] py-3 text-center text-[13.5px] text-white backdrop-blur-md"
+                className="pointer-events-none w-full rounded-full border border-white/25 bg-white/10 px-4 py-3 text-center backdrop-blur-md"
               >
-                {beat.who === "her" ? "……" : "继续"}
+                <TypeLine
+                  key={`${beat.id}-capsule`}
+                  text={beat.text}
+                  narrator={beat.who === "narrator"}
+                  you={beat.who === "you"}
+                  lead={cur?.chapterIndex === 0 ? 160 : 70}
+                  forceFull={forceFull}
+                  onTyped={() => setLineReady(true)}
+                />
               </div>
+              <button
+                type="button"
+                data-skip=""
+                className="pointer-events-auto text-[12px] tracking-[0.14em] text-white/65"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  go({ phase: "input", i: locRef.current.i, teaser: 0 });
+                }}
+              >
+                略过故事
+              </button>
             </div>
           )}
         </div>

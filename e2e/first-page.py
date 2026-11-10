@@ -100,12 +100,14 @@ def main() -> int:
         card.click()
         try:
             page.wait_for_url("**/play/seven", timeout=1000)
-            page.wait_for_selector(f"text={FIRST}", timeout=1000)
+            page.wait_for_selector("text=打开声音", timeout=1000)
             record(
-                "1. 首页卡片 1 秒内进入 /play/seven 且首句可见",
-                page.url.rstrip("/").endswith("/play/seven") and FIRST in page.inner_text("body"),
+                "1. 首页卡片 1 秒内进入 /play/seven 且开场可见",
+                page.url.rstrip("/").endswith("/play/seven") and "打开声音" in page.inner_text("body"),
                 f"url={page.url}",
             )
+            page.goto(BASE + "/play/seven?step=story", wait_until="networkidle")
+            page.wait_for_selector(f"text={FIRST}", timeout=2000)
         except Exception as e:
             record("1. 首页卡片 1 秒内进入 /play/seven 且首句可见", False, f"url={page.url}\n{e}")
             browser.close()
@@ -125,7 +127,7 @@ def main() -> int:
                       return {
                         tag: e.tagName,
                         stage: e.getAttribute("data-stage") === "advance",
-                        back: !!(e.closest && e.closest("[data-back], a[aria-label='返回']")),
+                        back: !!(e.closest && e.closest("[data-back], [data-skip], a[aria-label='返回']")),
                       };
                     }""",
                     [x, y],
@@ -207,42 +209,23 @@ def main() -> int:
             browser.close()
             return summarize()
 
-        # 先把选项和名字填上，再回到第一幕连点，确认 ?b= 不会清空。
-        page.goto(BASE + "/play/seven?b=7", wait_until="networkidle")
+        # 先把选项和名字填上，再回到第一幕连点，确认换屏不会清空。
+        page.goto(BASE + "/play/seven?step=story&b=7", wait_until="networkidle")
         page.locator(f"text={STAY}").click()
         page.locator("button", has_text="继续").click()
-        page.wait_for_selector("text=把手放在桌上")
-        for _ in range(12):
-            if page.locator("text=叫什么").count():
-                break
-            love = page.locator("text=确认他还在不在乎我")
-            if love.count() and page.locator("button", has_text="继续").count() == 0:
-                love.click()
-                page.locator("button", has_text="继续").click()
-                page.wait_for_timeout(400)
-                continue
-            stage = page.locator("[data-stage='advance']")
-            if stage.count():
-                sb = stage.bounding_box()
-                click_xy(page, sb["x"] + sb["width"] / 2, sb["y"] + sb["height"] * 0.5)
-                page.wait_for_load_state("domcontentloaded")
-                continue
-            cont = page.locator("button", has_text="继续")
-            if cont.count():
-                cont.click()
-                page.wait_for_timeout(400)
-                continue
-            break
-        if page.locator("input[type=text]").count() == 0:
+        page.goto(BASE + "/play/seven?step=input", wait_until="networkidle")
+        if page.locator("input").count() == 0:
             record(
                 "4. 从第一幕连点 6 次，名字和选项不丢",
                 False,
-                f"没走到名字页 url={page.url}\n{page.inner_text('body')[:240]}",
+                f"没走到填表 url={page.url}\n{page.inner_text('body')[:240]}",
             )
             browser.close()
             return summarize()
-        page.locator("input[type=text]").fill(NAME)
-        page.locator("button", has_text="说完了").click()
+        page.locator("input").first.fill(NAME)
+        page.locator("button", has_text="女").click()
+        page.locator("input").nth(1).fill("19950315")
+        page.locator("button", has_text="交给她").click()
         page.wait_for_timeout(200)
         saved = page.evaluate("() => sessionStorage.getItem('kanyu:seven')")
         if not saved or NAME not in saved or "stay" not in saved:
@@ -254,7 +237,7 @@ def main() -> int:
             browser.close()
             return summarize()
 
-        page.goto(BASE + "/play/seven", wait_until="networkidle")
+        page.goto(BASE + "/play/seven?step=story", wait_until="networkidle")
         page.wait_for_selector(f"text={FIRST}")
         logs = []
         ok4 = True
@@ -288,11 +271,11 @@ def main() -> int:
                 break
         # 回到名字页和选项页，界面上还要看得到
         if ok4:
-            page.goto(BASE + "/play/seven?b=12", wait_until="networkidle")
-            page.wait_for_selector("input[type=text]")
+            page.goto(BASE + "/play/seven?step=input", wait_until="networkidle")
+            page.wait_for_selector("input")
             page.wait_for_timeout(300)
-            typed = page.locator("input[type=text]").input_value()
-            page.goto(BASE + "/play/seven?b=7", wait_until="networkidle")
+            typed = page.locator("input").first.input_value()
+            page.goto(BASE + "/play/seven?step=story&b=7", wait_until="networkidle")
             page.wait_for_timeout(400)
             reply = STAY_REPLY in page.inner_text("body")
             logs.append(f"名字页输入框={typed!r} 选项页仍有回复={reply}")

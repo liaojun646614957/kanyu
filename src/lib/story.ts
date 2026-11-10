@@ -47,6 +47,8 @@ export type Beat = {
     label: string;
     skip?: string;
   };
+  /** 这一拍属于填表屏，不放进沉浸故事里 */
+  form?: boolean;
 };
 
 export type Choice = {
@@ -201,11 +203,6 @@ export const STORY_SEVEN: StoryScript = {
               reply: "「门在你身后。」她没抬头，「但你已经进来了。」",
               cost: "你选了走，但故事不会因此停下。",
             },
-            {
-              label: "先告诉我他们怎么了",
-              tag: "ask",
-              reply: "「他们？」她笑了一下，「他们只是问错了问题。」",
-            },
           ],
         },
       ],
@@ -251,11 +248,6 @@ export const STORY_SEVEN: StoryScript = {
               reply: "「在乎。」她答得太快了，「快到你不会信。」",
             },
             {
-              label: "确认我是不是做错了",
-              tag: "guilt",
-              reply: "「你没有做错。」她顿了顿，「你只是太晚才承认自己想要什么。」",
-            },
-            {
               label: "确认我还能不能重新开始",
               tag: "restart",
               reply: "「可以。」她看着你，「但不是和他。」",
@@ -270,6 +262,7 @@ export const STORY_SEVEN: StoryScript = {
           who: "her",
           text: "「要往下走，我得先知道你叫什么。」",
           input: { field: "name", label: "你的名字" },
+          form: true,
         },
         {
           id: "c5b",
@@ -277,6 +270,7 @@ export const STORY_SEVEN: StoryScript = {
           video: V.gaze,
           who: "her",
           text: "「还有，你是男是女。」",
+          form: true,
           choices: [
             { label: "女", tag: "female", reply: "「嗯。」她点了点头。" },
             { label: "男", tag: "male", reply: "「嗯。」她点了点头。" },
@@ -289,6 +283,7 @@ export const STORY_SEVEN: StoryScript = {
           who: "her",
           text: "「生辰。」",
           input: { field: "birth", label: "出生日期（公历）" },
+          form: true,
         },
         {
           id: "c7",
@@ -297,6 +292,7 @@ export const STORY_SEVEN: StoryScript = {
           who: "her",
           text: "「几点？不记得也行——只是会少看一层。」",
           input: { field: "hour", label: "出生时间", skip: "不记得了" },
+          form: true,
         },
       ],
     },
