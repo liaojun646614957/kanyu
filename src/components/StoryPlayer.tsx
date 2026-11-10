@@ -626,16 +626,13 @@ function TypeLine({
 }
 
 function AutoAdvance({ hold, onDone }: { hold: number; onDone: () => void }) {
-  const [p, setP] = useState(0);
   const doneRef = useRef(false);
 
   useEffect(() => {
     doneRef.current = false;
-    setP(0);
     const started = Date.now();
     const id = window.setInterval(() => {
       const el = Date.now() - started;
-      setP(Math.min(1, el / hold));
       if (el >= hold && !doneRef.current) {
         doneRef.current = true;
         window.clearInterval(id);
@@ -649,7 +646,10 @@ function AutoAdvance({ hold, onDone }: { hold: number; onDone: () => void }) {
     <div className="pointer-events-none flex items-center gap-2">
       <span className="shrink-0 text-[10px] tracking-widest text-white/40">跳过</span>
       <div className="h-[2px] flex-1 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-cinnabar-400/70" style={{ width: `${p * 100}%` }} />
+        <div
+          className="beat-fill h-full w-full rounded-full bg-cinnabar-400/70"
+          style={{ animationDuration: `${hold}ms` }}
+        />
       </div>
     </div>
   );
