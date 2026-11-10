@@ -166,12 +166,41 @@ def main() -> int:
             return summarize()
         click_xy(page, vx, vy)
         try:
-            page.wait_for_function("() => location.href.includes('b=1')", timeout=2000)
+            page.wait_for_function(
+                """() => {
+                  const v = document.querySelector('video');
+                  const img = document.querySelector('img');
+                  if (!v || !img) return false;
+                  const vs = getComputedStyle(v);
+                  return location.href.includes('b=1')
+                    && (v.currentSrc || '').endsWith('02-bell.mp4')
+                    && v.paused === false
+                    && vs.opacity === '1'
+                    && vs.zIndex === '2';
+                }""",
+                timeout=2000,
+            )
             page.wait_for_selector(f"text={SECOND}", timeout=2000)
+            seen = page.evaluate(
+                """() => {
+                  const v = document.querySelector('video');
+                  const img = document.querySelector('img');
+                  return {
+                    src: (v.currentSrc || '').split('/').pop(),
+                    paused: v.paused,
+                    t: Math.round(v.currentTime * 100) / 100,
+                    vOp: getComputedStyle(v).opacity,
+                    iOp: getComputedStyle(img).opacity,
+                  };
+                }"""
+            )
             record(
                 "3. 点击视频区域推进",
-                SECOND in page.inner_text("body") and FIRST not in page.inner_text("body"),
-                f"url={page.url}\nclick ({vx:.0f},{vy:.0f}) 命中 {vtop}\n{vchain}",
+                SECOND in page.inner_text("body")
+                and FIRST not in page.inner_text("body")
+                and seen["src"] == "02-bell.mp4"
+                and seen["paused"] is False,
+                f"url={page.url}\nclick ({vx:.0f},{vy:.0f}) 命中 {vtop}\nvideo={seen}\n{vchain}",
             )
         except Exception as e:
             record("3. 点击视频区域推进", False, f"url={page.url}\n{vchain}\n{e}")
