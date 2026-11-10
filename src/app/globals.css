@@ -243,6 +243,35 @@ body::before {
   animation: kenburns 1.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes scene-drift {
+  from {
+    transform: scale(1.14) translate3d(0, 1.6%, 0);
+  }
+  to {
+    transform: scale(1.02) translate3d(0, -1.2%, 0);
+  }
+}
+
+.scene-drift {
+  animation: scene-drift 7s linear forwards;
+}
+
+@keyframes beat-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.beat-fill {
+  transform-origin: left center;
+  animation-name: beat-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 /* 按钮按压反馈。
  * 不要用 transform 缩放按钮本身：按下时按钮变小，手指稍微一动，
  * pointerup 就落在按钮外面，click 不会触发。表现为「有时候点了没反应」。

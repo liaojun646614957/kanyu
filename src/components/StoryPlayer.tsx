@@ -264,24 +264,19 @@ export default function StoryPlayer({
         }}
       />
 
-      {/* 章节进度 */}
-      <div className="relative z-20 px-5 pt-14">
-        <div className="flex items-center gap-1.5">
-          {story.chapters.map((ch, ci) => (
-            <div key={ch.id} className="flex-1">
-              <div
-                className={`h-[2px] rounded-full transition-colors duration-500 ${
-                  ci < (cur?.chapterIndex ?? 0)
-                    ? "bg-cinnabar-400"
-                    : ci === (cur?.chapterIndex ?? 0)
-                      ? "bg-cinnabar-400/60"
-                      : "bg-white/12"
-                }`}
-              />
-            </div>
-          ))}
+      {/* 这一拍的进度：从左往右填满，换拍就重来 */}
+      {canTapThrough && beat.hold ? (
+        <div className="pointer-events-none absolute left-16 right-4 top-[22px] z-[90] h-1 overflow-hidden rounded-full bg-white/35">
+          <div
+            key={beat.id}
+            className="beat-fill h-full w-full bg-cinnabar-400"
+            style={{ animationDuration: `${dwell}ms` }}
+          />
         </div>
-        <p className="mt-2.5 font-serif text-[9.5px] tracking-[0.22em] text-white/35">
+      ) : null}
+
+      <div className="relative z-20 px-5 pt-14">
+        <p className="font-serif text-[9.5px] tracking-[0.22em] text-white/35">
           {cur?.chapterTitle}
         </p>
       </div>
@@ -512,34 +507,36 @@ function VideoLayer({
   }, [beatId]);
 
   return (
-    <div className="pointer-events-none absolute inset-0">
-      {/* 静态图兜底，视频就绪后淡出 */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={beat.art}
-        alt=""
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-          ready ? "opacity-0" : "opacity-100"
-        }`}
-      />
-      {beat.video && (
-        <video
-          ref={ref}
-          src={beat.video}
-          muted
-          playsInline
-          autoPlay
-          loop={paused || Boolean(holdMs)}
-          preload="auto"
-          disablePictureInPicture
-          controls={false}
-          onCanPlay={() => setReady(true)}
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div key={beatId} className="scene-drift absolute inset-0">
+        {/* 静态图兜底，视频就绪后淡出。外层一直在缓慢推近，视频没起来画面也会动。 */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={beat.art}
+          alt=""
+          aria-hidden="true"
           className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-            ready ? "opacity-100" : "opacity-0"
+            ready ? "opacity-0" : "opacity-100"
           }`}
         />
-      )}
+        {beat.video && (
+          <video
+            ref={ref}
+            src={beat.video}
+            muted
+            playsInline
+            autoPlay
+            loop={paused || Boolean(holdMs)}
+            preload="auto"
+            disablePictureInPicture
+            controls={false}
+            onCanPlay={() => setReady(true)}
+            className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+              ready ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        )}
+      </div>
     </div>
   );
 }
