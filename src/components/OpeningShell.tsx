@@ -2,7 +2,7 @@ import type { StoryScript } from "@/lib/story";
 
 type Row = { art: string; text: string; who: string; title: string };
 
-/** 选项出现之前的旁白。这段不依赖大包脚本，点按由页面里的小脚本接住。 */
+/** 选项出现之前的第一屏。全文直接写在 HTML 里，不放 script，避免水合报错。 */
 export function openingRows(story: StoryScript): Row[] {
   const out: Row[] = [];
   for (const ch of story.chapters) {
@@ -13,55 +13,6 @@ export function openingRows(story: StoryScript): Row[] {
   }
   return out;
 }
-
-const SCRIPT = `
-(function () {
-  var node = document.getElementById("opening-data");
-  if (!node) return;
-  var beats = JSON.parse(node.textContent || "[]");
-  var i = 0;
-  window.__beat = 0;
-  var line = document.getElementById("opening-line");
-  var img = document.getElementById("opening-art");
-  var title = document.getElementById("opening-title");
-  function show() {
-    var b = beats[i];
-    if (!b) return;
-    if (line) {
-      line.textContent = b.text;
-      line.className = b.who === "narrator"
-        ? "text-[12.5px] leading-7 text-white/55"
-        : "font-serif text-[21px] leading-[1.6] text-white";
-    }
-    if (img) img.src = b.art;
-    if (title) title.textContent = b.title;
-    window.__beat = i;
-  }
-  function next() {
-    if (window.__storyReady) return;
-    if (i >= beats.length - 1) {
-      window.__beat = beats.length;
-      return;
-    }
-    i += 1;
-    show();
-  }
-  var root = document.getElementById("opening");
-  if (root) root.addEventListener("pointerdown", function (e) {
-    var t = e.target;
-    if (t && t.closest && t.closest("[data-back]")) return;
-    next();
-  });
-  var back = document.getElementById("opening-back");
-  if (back) back.addEventListener("click", function (e) {
-    if (window.__storyReady) return;
-    if (i <= 0) return;
-    e.preventDefault();
-    i -= 1;
-    show();
-  });
-})();
-`;
 
 export default function OpeningShell({ story }: { story: StoryScript }) {
   const rows = openingRows(story);
@@ -76,6 +27,7 @@ export default function OpeningShell({ story }: { story: StoryScript }) {
         id="opening-art"
         src={first.art}
         alt=""
+        suppressHydrationWarning
         className="absolute inset-0 h-full w-full object-cover"
       />
       <div
@@ -110,31 +62,20 @@ export default function OpeningShell({ story }: { story: StoryScript }) {
             </div>
           ))}
         </div>
-        <p id="opening-title" className="mt-2.5 font-serif text-[9.5px] tracking-[0.22em] text-white/35">
-          {first.title}
-        </p>
+        <p id="opening-title" suppressHydrationWarning className="mt-2.5 font-serif text-[9.5px] tracking-[0.22em] text-white/35">{first.title}</p>
       </div>
       <div className="relative z-10 mt-auto px-5 pb-8">
         <p
           id="opening-line"
+          suppressHydrationWarning
           className={
             first.who === "narrator"
               ? "text-[12.5px] leading-7 text-white/55"
               : "font-serif text-[21px] leading-[1.6] text-white"
           }
-        >
-          {first.text}
-        </p>
-        <div className="mt-4 w-full rounded-full border border-white/15 bg-white/[0.07] py-3 text-center text-[13.5px] text-white">
-          继续
-        </div>
+        >{first.text}</p>
+        <div className="mt-4 w-full rounded-full border border-white/15 bg-white/[0.07] py-3 text-center text-[13.5px] text-white">继续</div>
       </div>
-      <script
-        id="opening-data"
-        type="application/json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(rows).replace(/</g, "\\u003c") }}
-      />
-      <script dangerouslySetInnerHTML={{ __html: SCRIPT }} />
     </div>
   );
 }

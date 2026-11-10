@@ -12,8 +12,8 @@ declare global {
 }
 
 /**
- * 大包脚本到了再接管。
- * 在这之前第一页由 OpeningShell 显示，点击也由它的小脚本处理，不白等水合。
+ * 第一页的句子由 OpeningShell 先画出来。这里等客户端挂上之后再接管，
+ * 服务端不渲染播放器，避免和第一页的字对不上。
  */
 export default function StoryMount({ story }: { story: StoryScript }) {
   const [index, setIndex] = useState<number | null>(null);
