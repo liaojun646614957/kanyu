@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type MouseEvent,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { buildFourPillars, elementCount, dayMasterStrength, WUXING } from "@/lib/ganzhi";
@@ -93,6 +94,7 @@ export default function StoryPlayer({
   const [lineReady, setLineReady] = useState(true);
   const [forceFull, setForceFull] = useState(true);
 
+  const videoRef = useRef<HTMLVideoElement>(null);
   const locRef = useRef<Loc>({
     phase: boot?.phase ?? "play",
     i: startAt,
@@ -152,7 +154,12 @@ export default function StoryPlayer({
       const now = performance.now();
       if (now - lastGo.current < 32) return;
       lastGo.current = now;
-      history.pushState({ kanyu: "story", id: story.id, loc }, "");
+      const url =
+        loc.phase === "loadingFree"
+          ? `/play/${story.id}?phase=loading`
+          : `/play/${story.id}?b=${loc.i}`;
+      // 走原型上的 pushState，避免 Next 把这次点击当成整页跳转。整页打开后，手机不会接着播下一段视频。
+      History.prototype.pushState.call(window.history, { kanyu: "story", id: story.id, loc }, "", url);
       apply(loc);
     },
     [apply, story.id],
@@ -276,9 +283,33 @@ export default function StoryPlayer({
       href={stageHref}
       data-stage={stageHref ? "advance" : undefined}
       className="relative mx-auto flex min-h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-black text-inherit no-underline"
+      onClick={
+        stageHref
+          ? (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const video = videoRef.current;
+              const next = flat[locRef.current.i + 1]?.beat;
+              if (video && next?.video) {
+                video.muted = true;
+                video.playsInline = true;
+                if (!video.src.endsWith(next.video)) video.src = next.video;
+                const pending = video.play();
+                if (pending) pending.catch(() => {});
+              }
+              onStage();
+            }
+          : undefined
+      }
     >
       <BackBar />
-      <VideoLayer beat={beat} beatId={beat.id} holdMs={beat.hold} paused={Boolean(beat.choices)} />
+      <VideoLayer
+        beat={beat}
+        beatId={beat.id}
+        holdMs={beat.hold}
+        paused={Boolean(beat.choices)}
+        videoRef={videoRef}
+      />
 
       {/* 压暗层 */}
       <div
@@ -504,27 +535,28 @@ function VideoLayer({
   beatId,
   holdMs,
   paused,
+  videoRef,
 }: {
   beat: Beat;
   beatId: string;
   holdMs?: number;
   paused: boolean;
+  videoRef: RefObject<HTMLVideoElement | null>;
 }) {
-  const ref = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.currentTime = 0;
-    const p = el.play();
-    if (p) p.catch(() => {});
-  }, [beatId]);
+    const el = videoRef.current;
+    if (!el || !beat.video) return;
+    if (!el.src.endsWith(beat.video)) el.src = beat.video;
+    const pending = el.play();
+    if (pending) pending.catch(() => {});
+  }, [beat.video, beatId, videoRef]);
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       <div key={beatId} className="scene-drift pointer-events-none absolute inset-0">
-        {/* 静态图兜底，视频就绪后淡出。外层一直在缓慢推近，视频没起来画面也会动。 */}
+        {/* 静态图兜底。视频元素不跟拍子一起拆掉，手机才能在同一次点击里接着播。 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={beat.art}
@@ -535,25 +567,25 @@ function VideoLayer({
             ready ? "opacity-0" : "opacity-100"
           }`}
         />
-        {beat.video && (
-          <video
-            ref={ref}
-            src={beat.video}
-            muted
-            playsInline
-            autoPlay
-            loop={paused || Boolean(holdMs)}
-            preload="auto"
-            disablePictureInPicture
-            controls={false}
-            onCanPlay={() => setReady(true)}
-            style={{ pointerEvents: "none" }}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-              ready ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        )}
       </div>
+      {beat.video && (
+        <video
+          ref={videoRef}
+          src={beat.video}
+          muted
+          playsInline
+          autoPlay
+          loop={paused || Boolean(holdMs)}
+          preload="auto"
+          disablePictureInPicture
+          controls={false}
+          onCanPlay={() => setReady(true)}
+          style={{ pointerEvents: "none" }}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+            ready ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      )}
     </div>
   );
 }

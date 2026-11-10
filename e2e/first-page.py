@@ -166,7 +166,7 @@ def main() -> int:
             return summarize()
         click_xy(page, vx, vy)
         try:
-            page.wait_for_url("**/play/seven?b=1", timeout=2000)
+            page.wait_for_function("() => location.href.includes('b=1')", timeout=2000)
             page.wait_for_selector(f"text={SECOND}", timeout=2000)
             record(
                 "3. 点击视频区域推进",
@@ -239,7 +239,11 @@ def main() -> int:
                 break
             click_xy(page, sb["x"] + sb["width"] / 2, sb["y"] + sb["height"] * 0.45)
             try:
-                page.wait_for_url(f"**/play/seven?b={before + 1}", timeout=2000)
+                page.wait_for_function(
+                    "(n) => location.href.includes('b=' + n)",
+                    arg=before + 1,
+                    timeout=2000,
+                )
                 page.wait_for_selector(f"text={marker}", timeout=2000)
             except Exception as e:
                 ok4 = False
