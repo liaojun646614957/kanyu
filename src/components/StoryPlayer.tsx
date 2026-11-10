@@ -81,8 +81,8 @@ export default function StoryPlayer({
   const [birth, setBirth] = useState("1995-03-15");
   const [hour, setHour] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
-  const [lineReady, setLineReady] = useState(false);
-  // 点按把当前句一次显示完。前几拍是同一张图，若点一下又从光标重打，看起来像没反应。
+  // 第一句已经全文在屏幕上，点「继续」就是下一拍，不要再空点一次。
+  const [lineReady, setLineReady] = useState(true);
   const [forceFull, setForceFull] = useState(true);
 
   const locRef = useRef<Loc>({
@@ -156,7 +156,8 @@ export default function StoryPlayer({
   }, [advance]);
 
   const onStage = useCallback(() => {
-    if (!lineReady) {
+    // 还在逐字出现时，第一下先把这句补全。句子已经完整就直接下一拍。
+    if (!lineReady && !forceFull) {
       setForceFull(true);
       setLineReady(true);
       return;
@@ -165,7 +166,7 @@ export default function StoryPlayer({
     setForceFull(true);
     advance();
     setLineReady(true);
-  }, [advance, lineReady]);
+  }, [advance, lineReady, forceFull]);
 
   const settleToTeaser = useCallback(() => {
     go({ phase: "teaser", i: locRef.current.i, teaser: 0 });
@@ -245,7 +246,7 @@ export default function StoryPlayer({
 
       {canTapThrough && (
         <div
-          className="absolute inset-0 z-40"
+          className="absolute inset-0 z-30"
           style={{ transform: "translateZ(0)" }}
           onPointerDown={(e) => {
             if (e.button > 0) return;
@@ -286,7 +287,7 @@ export default function StoryPlayer({
       </div>
 
       {/* 台词。可点穿的拍子上，字本身不接点击，点在句子上等于点在画面上 */}
-      <div className={`relative z-20 mt-auto px-5 pb-8 ${canTapThrough ? "pointer-events-none" : ""}`}>
+      <div className={`relative z-50 mt-auto px-5 pb-8 ${canTapThrough ? "pointer-events-none" : ""}`}>
         <div key={beat.id} className="animate-fade flex flex-col gap-4">
           {beat.who === "her" && (
             <div className="flex items-center gap-2">
@@ -382,7 +383,7 @@ export default function StoryPlayer({
                 <AutoAdvance key={beat.id} hold={dwell} onDone={onAuto} />
               ) : null}
               <TapButton
-                onTap={advance}
+                onTap={onStage}
                 className="press w-full rounded-full border border-white/15 bg-white/[0.07] py-3 text-[13.5px] text-white backdrop-blur-md"
               >
                 {beat.who === "her" ? "……" : "继续"}
