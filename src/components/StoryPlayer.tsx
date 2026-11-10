@@ -58,9 +58,11 @@ function readHistoryLoc(storyId: string): Loc | null {
 export default function StoryPlayer({
   story,
   initialIndex = 0,
+  initialPhase = "play",
 }: {
   story: StoryScript;
   initialIndex?: number;
+  initialPhase?: Phase;
 }) {
   // 把 chapters 摊平成线性 beats，并记住每个 beat 属于哪一章
   const flat = useMemo(() => {
@@ -77,7 +79,7 @@ export default function StoryPlayer({
     Math.max(0, flat.length - 1),
     Math.max(0, initialIndex),
   );
-  const [phase, setPhase] = useState<Phase>(boot?.phase ?? "play");
+  const [phase, setPhase] = useState<Phase>(boot?.phase ?? initialPhase);
   const [i, setI] = useState(startAt);
   const [teaserI, setTeaserI] = useState(boot?.teaser ?? 0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
@@ -262,7 +264,11 @@ export default function StoryPlayer({
   const canTapThrough = !beat.choices && !beat.input && beat.id !== "d4";
   const dwell = readPause(beat.who, cur?.chapterIndex ?? 0);
   // 整屏就是下一拍的链接。不依赖脚本把点击接住，「继续」只是写在这层链接里的字。
-  const stageHref = canTapThrough ? `/play/${story.id}?b=${i + 1}` : undefined;
+  const stageHref = canTapThrough
+    ? i + 1 < flat.length
+      ? `/play/${story.id}?b=${i + 1}`
+      : `/play/${story.id}?phase=loading`
+    : undefined;
   const Stage = stageHref ? "a" : "div";
 
   return (
@@ -282,17 +288,6 @@ export default function StoryPlayer({
             "linear-gradient(180deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.06) 26%, rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.96) 100%)",
         }}
       />
-
-      {/* 这一拍的进度：从左往右填满，换拍就重来 */}
-      {canTapThrough && beat.hold ? (
-        <div className="pointer-events-none absolute left-16 right-4 top-[22px] z-[90] h-1 overflow-hidden rounded-full bg-white/35">
-          <div
-            key={beat.id}
-            className="beat-fill h-full w-full bg-cinnabar-400"
-            style={{ animationDuration: `${dwell}ms` }}
-          />
-        </div>
-      ) : null}
 
       <div className="pointer-events-none relative z-20 px-5 pt-14">
         <p className="font-serif text-[9.5px] tracking-[0.22em] text-white/35">
